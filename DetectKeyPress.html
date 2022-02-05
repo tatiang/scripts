@@ -1,29 +1,51 @@
-<!DOCTYPE html>
-<html lang="en">
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js" 
-        type="text/javascript">
-    </script>
-    <title>Key Listner</title>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <meta http-equiv="Content-Style-Type" content="text/css">
+  <title></title>
+  <meta name="Generator" content="Cocoa HTML Writer">
+  <meta name="CocoaVersion" content="2022.6">
+  <style type="text/css">
+    p.p1 {margin: 0.0px 0.0px 0.0px 0.0px; font: 15.0px Menlo; color: #333333; -webkit-text-stroke: #333333}
+    p.p2 {margin: 0.0px 0.0px 0.0px 0.0px; font: 15.0px Menlo; color: #000000; -webkit-text-stroke: #000000}
+    p.p3 {margin: 0.0px 0.0px 0.0px 0.0px; font: 15.0px Menlo; color: #333333; -webkit-text-stroke: #333333; background-color: #f7f7f7; min-height: 18.0px}
+    span.s1 {font-kerning: none}
+    span.s2 {font-kerning: none; color: #333333; background-color: #f7f7f7; -webkit-text-stroke: 0px #333333}
+    span.s3 {font-kerning: none; background-color: #f7f7f7}
+    span.s4 {font-kerning: none; color: #000000; -webkit-text-stroke: 0px #000000}
+    span.s5 {font-kerning: none; color: #333333; -webkit-text-stroke: 0px #333333}
+  </style>
 </head>
 <body>
-    <p id="demo">
-
-    </p>
-   <script>
-       function sendKeyDown(e) {
-            // document.getElementById("demo").innerHTML = JSON.stringify({keyCode: e.keyCode,keyState: "Down", ctrlState: e.ctrlKey}) ;
-            ThunkableWebviewerExtension.postMessage( JSON.stringify({keyCode: e.keyCode,keyState: "Pressed", ctrlState: e.ctrlKey}));
-       }
-       function sendKeyUp(e) {
-            // document.getElementById("demo").innerHTML = JSON.stringify({keyCode: e.keyCode,keyState: "Up", ctrlState: e.ctrlKey}) ;
-            ThunkableWebviewerExtension.postMessage( JSON.stringify({keyCode: e.keyCode,keyState: "Released", ctrlState: e.ctrlKey}));
-       }
-       window.addEventListener("keydown", sendKeyDown);
-       window.addEventListener("keyup", sendKeyUp);
-   </script> 
+<p class="p1"><span class="s1">&lt;!DOCTYPE html&gt;</span></p>
+<p class="p2"><span class="s1">&lt;<b>html</b> lang="en"&gt;</span></p>
+<p class="p2"><span class="s1">&lt;<b>head</b>&gt;</span></p>
+<p class="p2"><span class="s2"><span class="Apple-converted-space">    </span></span><span class="s1">&lt;<b>meta</b> charset="UTF-8"&gt;</span></p>
+<p class="p2"><span class="s2"><span class="Apple-converted-space">    </span></span><span class="s1">&lt;<b>meta</b> http-equiv="X-UA-Compatible" content="IE=edge"&gt;</span></p>
+<p class="p2"><span class="s2"><span class="Apple-converted-space">    </span></span><span class="s1">&lt;<b>meta</b> name="viewport" content="width=device-width, initial-scale=1.0"&gt;</span></p>
+<p class="p2"><span class="s2"><span class="Apple-converted-space">    </span></span><span class="s1">&lt;<b>script</b> src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js"<span class="Apple-converted-space"> </span></span></p>
+<p class="p2"><span class="s1"><span class="Apple-converted-space">        </span>type="text/javascript"&gt;</span></p>
+<p class="p2"><span class="s2"><span class="Apple-converted-space">    </span></span><span class="s1">&lt;/<b>script</b>&gt;</span></p>
+<p class="p1"><span class="s3"><span class="Apple-converted-space">    </span></span><span class="s4">&lt;<b>title</b>&gt;</span><span class="s3">Key Listner</span><span class="s4">&lt;/<b>title</b>&gt;</span></p>
+<p class="p2"><span class="s1">&lt;/<b>head</b>&gt;</span></p>
+<p class="p2"><span class="s1">&lt;<b>body</b>&gt;</span></p>
+<p class="p2"><span class="s2"><span class="Apple-converted-space">    </span></span><span class="s1">&lt;<b>p</b> id="demo"&gt;</span></p>
+<p class="p3"><span class="s1"></span><br></p>
+<p class="p1"><span class="s3"><span class="Apple-converted-space">    </span></span><span class="s4">&lt;/<b>p</b>&gt;</span></p>
+<p class="p2"><span class="s2"><span class="Apple-converted-space">   </span></span><span class="s1">&lt;<b>script</b>&gt;</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">       </span><b>function</b> sendKeyDown(e) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span><i>// document.getElementById("demo").innerHTML = JSON.stringify({keyCode: e.keyCode,keyState: "Down", ctrlState: e.ctrlKey}) ;</i></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>ThunkableWebviewerExtension.postMessage( JSON.stringify({keyCode: e.keyCode,keyState: "Pressed", ctrlState: e.ctrlKey}));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">       </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">       </span><b>function</b> sendKeyUp(e) {</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span><i>// document.getElementById("demo").innerHTML = JSON.stringify({keyCode: e.keyCode,keyState: "Up", ctrlState: e.ctrlKey}) ;</i></span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">            </span>ThunkableWebviewerExtension.postMessage( JSON.stringify({keyCode: e.keyCode,keyState: "Released", ctrlState: e.ctrlKey}));</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">       </span>}</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">       </span>window.addEventListener("keydown", sendKeyDown);</span></p>
+<p class="p1"><span class="s1"><span class="Apple-converted-space">       </span>window.addEventListener("keyup", sendKeyUp);</span></p>
+<p class="p2"><span class="s5"><span class="Apple-converted-space">   </span></span><span class="s1">&lt;/<b>script</b>&gt;</span><span class="s2"><span class="Apple-converted-space"> </span></span></p>
+<p class="p2"><span class="s1">&lt;/<b>body</b>&gt;</span></p>
+<p class="p2"><span class="s1">&lt;/<b>html</b>&gt;</span></p>
 </body>
 </html>
