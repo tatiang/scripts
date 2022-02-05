@@ -1,2 +1,29 @@
-# scripts
-Thunkable scripts
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js" 
+        type="text/javascript">
+    </script>
+    <title>Key Listner</title>
+</head>
+<body>
+    <p id="demo">
+ 
+    </p>
+   <script>
+       function sendKeyDown(e) {
+            // document.getElementById("demo").innerHTML = JSON.stringify({keyCode: e.keyCode,keyState: "Down", ctrlState: e.ctrlKey}) ;
+            ThunkableWebviewerExtension.postMessage( JSON.stringify({keyCode: e.keyCode,keyState: "Pressed", ctrlState: e.ctrlKey}));
+       }
+       function sendKeyUp(e) {
+            // document.getElementById("demo").innerHTML = JSON.stringify({keyCode: e.keyCode,keyState: "Up", ctrlState: e.ctrlKey}) ;
+            ThunkableWebviewerExtension.postMessage( JSON.stringify({keyCode: e.keyCode,keyState: "Released", ctrlState: e.ctrlKey}));
+       }
+       window.addEventListener("keydown", sendKeyDown);
+       window.addEventListener("keyup", sendKeyUp);
+   </script> 
+</body>
+</html>
