@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Check Day</title>
+</head>
+<body>
+    <h1>Check Day Script</h1>
+    <p>This page allows communication with Thunkable to check if a date is a Weekday, Weekend, or Holiday.</p>
+
+    <script>
+        // Listener to handle messages from Thunkable
+        window.addEventListener("message", (event) => {
+            try {
+                // Parse incoming JSON message
+                const data = JSON.parse(event.data);
+                if (data.action === "checkDay") {
+                    // Process the date using checkDayThunkable
+                    const result = checkDayThunkable(data.date);
+                    // Send the result back to Thunkable
+                    window.ReactNativeWebView.postMessage(result);
+                }
+            } catch (error) {
+                // Return error message if anything goes wrong
+                window.ReactNativeWebView.postMessage(
+                    "Error: Invalid input or unexpected error."
+                );
+            }
+        });
+
+        // Function to check if the given date is a Holiday, Weekend, or Weekday
+        function checkDayThunkable(date) {
+            const inputDate = new Date(date);
+            if (isNaN(inputDate)) {
+                return "Error: Invalid date format. Use 'Mth Day, Year'.";
+            }
+
+            const dayOfWeek = inputDate.getDay();
+            const formattedDate = inputDate.toISOString().split("T")[0];
+
+            // Common U.S. holidays (hardcoded)
+            const holidays = [
+                "2024-01-01", // New Year's Day
+                "2024-01-15", // Martin Luther King Jr. Day
+                "2024-02-19", // Presidents' Day
+                "2024-05-27", // Memorial Day
+                "2024-07-04", // Independence Day
+                "2024-09-02", // Labor Day
+                "2024-11-11", // Veterans Day
+                "2024-11-28", // Thanksgiving Day
+                "2024-12-25"  // Christmas Day
+            ];
+
+            if (holidays.includes(formattedDate)) {
+                return "Holiday";
+            }
+            if (dayOfWeek === 0 || dayOfWeek === 6) {
+                return "Weekend";
+            }
+            return "Weekday";
+        }
+    </script>
+</body>
+</html>
