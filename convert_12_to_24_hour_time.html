@@ -8,8 +8,6 @@
   </head>
   <body>
     <script type="text/javascript">
-      console.log("Script loaded");
-
       // Function to convert time to 24-hour format
       function convertTo24HourFormat(inputTime) {
         let [time, period] = inputTime.split(" ");
@@ -29,22 +27,33 @@
 
       // When the screen initializes, post messages to the web bridge and web viewer
       function onScreenOpen() {
-        console.log("Screen opened, sending messages...");
         ThunkableWebviewerExtension.postMessage('dragon');
         ThunkableWebviewerExtension.postMessage('unicorn');
       }
 
       // Function to handle incoming messages that expect a return value
       ThunkableWebviewerExtension.receiveMessageWithReturnValue(function(message, callback) {
-        const response = 'demo: ' + message;
-        console.log("Received message with return value:", message);
-        callback(response);
+        try {
+          const inputTime = message.trim();
+
+          // Validate input format using regex
+          if (!/^\d{1,2}:\d{2}\s?(AM|PM)$/i.test(inputTime)) {
+            throw new Error("Invalid format! Use HH:MM AM/PM.");
+          }
+
+          // Perform conversion
+          const convertedTime = convertTo24HourFormat(inputTime.toUpperCase());
+
+          // Send converted time back as the callback response
+          callback(convertedTime);
+        } catch (error) {
+          // Send error message back as the callback response
+          callback(`Error: ${error.message}`);
+        }
       });
 
       // Handle incoming messages that do not expect a return value
       ThunkableWebviewerExtension.receiveMessage(function(message) {
-        console.log("Received message without return value:", message);
-
         try {
           const inputTime = message.trim();
 
