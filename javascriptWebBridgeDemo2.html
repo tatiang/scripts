@@ -7,23 +7,27 @@
     <title>Thunkable Web Bridge Demo</title>
   </head>
   <body>
-  </body>
-  <script type="text/javascript">
-    // Function to handle incoming messages that expect a return value
-    ThunkableWebviewerExtension.receiveMessageWithReturnValue(function(message, callback) {
-      // Create the response by prefixing the received message with "demo: "
-      const response = 'demo: ' + message;
-      
-      // Send the response back to the Thunkable app
-      callback(response);
-    });
+    <script type="text/javascript">
+      // When the screen initializes, post messages to the web bridge and web viewer
+      function onScreenOpen() {
+        ThunkableWebviewerExtension.postMessage('dragon');
+        ThunkableWebviewerExtension.postMessage('unicorn');
+      }
 
-    // Optional: Handle incoming messages that do not expect a return value
-    ThunkableWebviewerExtension.receiveMessage(function(message) {
-      // Create the response by prefixing the received message with "demo: " prefix
-      const response = 'demo: ' + message;
-      // Send the response back to the Thunkable app
-      ThunkableWebviewerExtension.postMessage(response);
-    });
-  </script>
+      // Function to handle incoming messages that expect a return value
+      ThunkableWebviewerExtension.receiveMessageWithReturnValue(function(message, callback) {
+        const response = 'demo: ' + message;
+        callback(response);
+      });
+
+      // Handle incoming messages that do not expect a return value
+      ThunkableWebviewerExtension.receiveMessage(function(message) {
+        const response = 'demo: ' + message;
+        ThunkableWebviewerExtension.postMessage(response);
+      });
+
+      // Call the onScreenOpen function when the script loads
+      window.onload = onScreenOpen;
+    </script>
+  </body>
 </html>
