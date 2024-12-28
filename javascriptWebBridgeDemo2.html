@@ -10,6 +10,7 @@
     <script type="text/javascript">
       // When the screen initializes, post messages to the web bridge and web viewer
       function onScreenOpen() {
+        console.log("Screen opened, sending messages...");
         ThunkableWebviewerExtension.postMessage('dragon');
         ThunkableWebviewerExtension.postMessage('unicorn');
       }
@@ -17,12 +18,14 @@
       // Function to handle incoming messages that expect a return value
       ThunkableWebviewerExtension.receiveMessageWithReturnValue(function(message, callback) {
         const response = 'demo: ' + message;
+        console.log("Received message with return value:", message);
         callback(response);
       });
 
       // Handle incoming messages that do not expect a return value
       ThunkableWebviewerExtension.receiveMessage(function(message) {
         const response = 'demo: ' + message;
+        console.log("Received message without return value:", message);
         ThunkableWebviewerExtension.postMessage(response);
       });
 
