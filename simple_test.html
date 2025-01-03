@@ -7,6 +7,7 @@
 <body>
   <h1 id="heading">Waiting for message...</h1>
   <script>
+    ThunkableWebviewerExtension.postMessage(JSON.stringify({type:"page loaded"}));
     document.addEventListener('message', event => {
       document.getElementById('heading').innerText = "Got message: " + event.data;
       alert("Got message: " + event.data);
