@@ -7,10 +7,22 @@
 <body>
   <h1 id="heading">Waiting for message...</h1>
   <script>
-    ThunkableWebviewerExtension.postMessage(JSON.stringify({type:"page loaded"}));
+    // Notify Thunkable that the page has loaded
+    if (typeof ThunkableWebviewerExtension !== 'undefined') {
+      ThunkableWebviewerExtension.postMessage(JSON.stringify({ type: "page loaded" }));
+    } else {
+      console.warn("ThunkableWebviewerExtension is not defined.");
+    }
+
+    // Listen for messages from Thunkable
     document.addEventListener('message', event => {
-      document.getElementById('heading').innerText = "Got message: " + event.data;
-      alert("Got message: " + event.data);
+      try {
+        const message = event.data; // Thunkable sends raw data in `event.data`
+        document.getElementById('heading').innerText = "Got message: " + message;
+        alert("Got message: " + message);
+      } catch (error) {
+        console.error("Error processing message: ", error);
+      }
     });
   </script>
 </body>
