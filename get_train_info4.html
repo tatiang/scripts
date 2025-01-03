@@ -48,23 +48,24 @@
 
 <script>
   /**************************************************************
-   * 1) Listen for messages from Thunkable via
+   * 1) Listen for messages from Thunkable using
    *    ThunkableWebviewerExtension.receiveMessage()
    **************************************************************/
-  ThunkableWebviewerExtension.receiveMessage(async function(message) {
-    // message is the string (or sometimes non-JSON) sent by Thunkable
-    const statusEl = document.getElementById('status');
+  ThunkableWebviewerExtension.receiveMessage(async function (message) {
+    // Convert message to string so trim() won't crash
+    const strMessage = String(message);
+    const statusEl   = document.getElementById('status');
 
     try {
-      // Check if the message appears to be JSON (optional but helpful).
-      const trimmed = message.trim();
-      if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) {
-        console.warn("Non-JSON message received; ignoring:", message);
-        return; // Stop here if it's not valid JSON
+      // If it doesn't start with { or [, assume it's not JSON
+      const trimmed = strMessage.trim();
+      if (!(trimmed.startsWith('{') || trimmed.startsWith('['))) {
+        console.warn('Non-JSON message received; ignoring:', message);
+        return;
       }
 
-      // Attempt to parse the JSON
-      const data = JSON.parse(message);
+      // Attempt to parse
+      const data = JSON.parse(trimmed);
 
       // Extract parameters
       const stationName = data.stationName;
@@ -74,7 +75,7 @@
 
       statusEl.textContent = `Loading next trip from ${stationName}...`;
 
-      // 2) Fetch data from 511.org
+      // 2) Fetch SMART train data from 511.org
       const result = await fetchSmartTimes(apiKey, stationName, dateTime, direction);
 
       // 3) Display the final results
@@ -82,7 +83,7 @@
       displayResults(result);
 
     } catch (err) {
-      console.error("Error receiving message from Thunkable:", err);
+      console.error('Error receiving message from Thunkable:', err);
       statusEl.textContent = `Error: ${err.message}`;
     }
   });
@@ -96,7 +97,6 @@
     table.style.display = 'table'; // show the table
     tbody.innerHTML = ''; // clear existing rows
 
-    // Fill table rows
     data.subsequentStops.forEach(stop => {
       const tr = document.createElement('tr');
       const tdName = document.createElement('td');
@@ -116,16 +116,15 @@
    **************************************************************/
   async function fetchSmartTimes(apiKey, stationName, dateTime, direction) {
     // Maps for stationName -> stationId and direction -> 'N' or 'S'.
-    // Extend with additional SMART stations as needed.
     const stationMap = {
-      "Novato Downtown": "71051",
-      "Larkspur":        "71011",
-      "San Rafael":      "71021"
-      // ... add more stations if needed
+      'Novato Downtown': '71051',
+      'Larkspur':        '71011',
+      'San Rafael':      '71021'
+      // ... add more stations here if needed
     };
     const directionMap = {
-      "north": "N",
-      "south": "S"
+      'north': 'N',
+      'south': 'S'
     };
 
     // 1) Convert stationName to stationId
@@ -138,7 +137,7 @@
       throw new Error(`Unknown direction: ${direction}. Use 'north' or 'south'.`);
     }
 
-    // 2) stoptimetable: get next trip from the station
+    // 2) stoptimetable: get next trip from station
     const stUrl = `https://api.511.org/transit/stoptimetable?api_key=${apiKey}&operatorref=SA&monitoringref=${stationId}&starttime=${dateTime}&format=json`;
     const departureData = await fetch(stUrl).then(r => r.json());
     const visits = departureData?.Siri?.ServiceDelivery?.StopTimetableDelivery?.TimetabledStopVisit || [];
@@ -164,12 +163,12 @@
     const stopsInSequence = matchedPattern.PointsInSequence?.TimingPointInJourneyPattern || [];
     const subsequentStops = [];
 
-    // 4) For each stop, see if it matches the same journeyRef
+    // 4) For each stop, see if it matches that same journeyRef
     for (const stop of stopsInSequence) {
       const stopId   = stop.ScheduledStopPointRef;
       const stopName = stop.Name;
 
-      // stoptimetable again, for each stop
+      // stoptimetable for each stop
       const stopUrl = `https://api.511.org/transit/stoptimetable?api_key=${apiKey}&operatorref=SA&monitoringref=${stopId}&starttime=${dateTime}&format=json`;
       const stopJson = await fetch(stopUrl).then(r => r.json());
       const stopVisits = stopJson?.Siri?.ServiceDelivery?.StopTimetableDelivery?.TimetabledStopVisit || [];
@@ -190,7 +189,7 @@
       }
     }
 
-    // 5) Return final data object
+    // 5) Return final data
     return {
       station: stationName,
       requestedDateTime: dateTime,
@@ -201,16 +200,15 @@
   }
 
   /**************************************************************
-   * 4) (Optional) Debugging in a normal browser
-   *    Uncomment if you want to test outside Thunkable
+   * 4) (Optional) Debug in a normal browser
    **************************************************************
    /*
    (async () => {
      const data = await fetchSmartTimes(
-       "26b2123a-e585-42cc-8f18-16f2ec4ea8a4", // API KEY
-       "Novato Downtown",
-       "202501030700",
-       "north"
+       '26b2123a-e585-42cc-8f18-16f2ec4ea8a4', // API KEY
+       'Novato Downtown',
+       '202501030700',
+       'north'
      );
      document.getElementById('status').textContent =
        `Next Trip from ${data.station} at ${data.nextDepartureTime}`;
