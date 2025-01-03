@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Test Page</title>
+</head>
+<body>
+  <h1 id="heading">Waiting for message...</h1>
+  <script>
+    document.addEventListener('message', event => {
+      document.getElementById('heading').innerText = "Got message: " + event.data;
+      alert("Got message: " + event.data);
+    });
+  </script>
+</body>
+</html>
