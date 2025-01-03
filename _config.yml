@@ -46,5 +46,5 @@ custom_var: Custom value
 
 # Content
 #  <script src="{{ '/scripts/simple_test.html' | relative_url }}"></script>
-<iframe src="{{ '/scripts/simple_test.html' | relative_url }}" width="600" height="400"></iframe>
+# <iframe src="{{ '/scripts/simple_test.html' | relative_url }}" width="600" height="400"></iframe>
 
