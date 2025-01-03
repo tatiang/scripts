@@ -8,18 +8,25 @@
   <h1 id="heading">Waiting for message...</h1>
   <script>
     // Notify Thunkable that the page has loaded
-      ThunkableWebviewerExtension.postMessage(JSON.stringify({ type: "page loaded" }));
-  
+    ThunkableWebviewerExtension.postMessage(JSON.stringify({ type: "page loaded" }));
+
     // Listen for messages from Thunkable
-    document.addEventListener('message', event => {
+    ThunkableWebviewerExtension.receiveMessage(function (message) {
       try {
-        const message = event.data; // Thunkable sends raw data in `event.data`
-        document.getElementById('heading').innerText = "Got message: " + message;
-        alert("Got message: " + message);
-      } catch (error) {
-        console.error("Error processing message: ", error);
+        const msgFromApp = JSON.parse(message); // Parse the JSON message
+        if (msgFromApp.type === "draw") {
+          drawShape(msgFromApp.info); // Handle "draw" type messages
+        }
+      } catch (e) {
+        console.error("Error processing message: ", e);
       }
     });
+
+    // Example function to handle the "draw" action
+    function drawShape(info) {
+      document.getElementById('heading').innerText = "Drawing shape: " + info;
+      alert("Drawing shape: " + info);
+    }
   </script>
 </body>
 </html>
