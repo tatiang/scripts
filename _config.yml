@@ -1,0 +1,45 @@
+# Site settings
+title: Your Site Title
+description: A brief description of your site.
+author: Your Name
+email: your-email@example.com
+url: https://your-username.github.io
+baseurl: "" # Leave blank if publishing to root, e.g., username.github.io
+theme: minima # Replace with the theme you are using
+
+# Repository settings
+repository: your-username/your-repo-name
+
+# Social links (optional)
+twitter_username: your-twitter-handle
+github_username: your-username
+linkedin_username: your-linkedin-handle
+
+# Plugins (optional)
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+
+# Defaults (optional)
+defaults:
+  - scope:
+      path: "" # Applies to all files
+    values:
+      layout: default
+
+# Markdown settings
+markdown: kramdown
+highlighter: rouge
+
+# Exclusions (optional)
+exclude:
+  - README.md
+  - Gemfile
+  - Gemfile.lock
+
+# Pagination (optional)
+paginate: 5 # Number of posts per page
+paginate_path: "/page:num/"
+
+# Custom variables (optional)
+custom_var: Custom value
