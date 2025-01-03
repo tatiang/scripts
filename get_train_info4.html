@@ -48,22 +48,30 @@
 
 <script>
   /**************************************************************
-   * 1) Listen for Thunkable’s PostMessage via
+   * 1) Listen for messages from Thunkable via
    *    ThunkableWebviewerExtension.receiveMessage()
    **************************************************************/
-  ThunkableWebviewerExtension.receiveMessage(async function (message) {
-    // message is the string we sent from Thunkable
+  ThunkableWebviewerExtension.receiveMessage(async function(message) {
+    // message is the string (or sometimes non-JSON) sent by Thunkable
+    const statusEl = document.getElementById('status');
+
     try {
-      // Example message from Thunkable:
-      //   {"stationName":"Novato Downtown","dateTime":"202501030700","direction":"north","apiKey":"1234-ABCD"}
+      // Check if the message appears to be JSON (optional but helpful).
+      const trimmed = message.trim();
+      if (!(trimmed.startsWith("{") || trimmed.startsWith("["))) {
+        console.warn("Non-JSON message received; ignoring:", message);
+        return; // Stop here if it's not valid JSON
+      }
+
+      // Attempt to parse the JSON
       const data = JSON.parse(message);
 
+      // Extract parameters
       const stationName = data.stationName;
       const dateTime    = data.dateTime;
       const direction   = data.direction;
       const apiKey      = data.apiKey;
 
-      const statusEl = document.getElementById('status');
       statusEl.textContent = `Loading next trip from ${stationName}...`;
 
       // 2) Fetch data from 511.org
@@ -75,7 +83,7 @@
 
     } catch (err) {
       console.error("Error receiving message from Thunkable:", err);
-      document.getElementById('status').textContent = `Error: ${err.message}`;
+      statusEl.textContent = `Error: ${err.message}`;
     }
   });
 
@@ -108,11 +116,12 @@
    **************************************************************/
   async function fetchSmartTimes(apiKey, stationName, dateTime, direction) {
     // Maps for stationName -> stationId and direction -> 'N' or 'S'.
+    // Extend with additional SMART stations as needed.
     const stationMap = {
       "Novato Downtown": "71051",
       "Larkspur":        "71011",
       "San Rafael":      "71021"
-      // ... add more SMART stations as needed
+      // ... add more stations if needed
     };
     const directionMap = {
       "north": "N",
@@ -129,7 +138,7 @@
       throw new Error(`Unknown direction: ${direction}. Use 'north' or 'south'.`);
     }
 
-    // 2) stoptimetable: get next trip from station
+    // 2) stoptimetable: get next trip from the station
     const stUrl = `https://api.511.org/transit/stoptimetable?api_key=${apiKey}&operatorref=SA&monitoringref=${stationId}&starttime=${dateTime}&format=json`;
     const departureData = await fetch(stUrl).then(r => r.json());
     const visits = departureData?.Siri?.ServiceDelivery?.StopTimetableDelivery?.TimetabledStopVisit || [];
@@ -155,12 +164,12 @@
     const stopsInSequence = matchedPattern.PointsInSequence?.TimingPointInJourneyPattern || [];
     const subsequentStops = [];
 
-    // 4) For each stop, see if it matches that same journeyRef
+    // 4) For each stop, see if it matches the same journeyRef
     for (const stop of stopsInSequence) {
       const stopId   = stop.ScheduledStopPointRef;
       const stopName = stop.Name;
 
-      // stoptimetable again
+      // stoptimetable again, for each stop
       const stopUrl = `https://api.511.org/transit/stoptimetable?api_key=${apiKey}&operatorref=SA&monitoringref=${stopId}&starttime=${dateTime}&format=json`;
       const stopJson = await fetch(stopUrl).then(r => r.json());
       const stopVisits = stopJson?.Siri?.ServiceDelivery?.StopTimetableDelivery?.TimetabledStopVisit || [];
@@ -181,7 +190,7 @@
       }
     }
 
-    // Return final data
+    // 5) Return final data object
     return {
       station: stationName,
       requestedDateTime: dateTime,
@@ -192,21 +201,22 @@
   }
 
   /**************************************************************
-   * 4) Debugging in a normal browser
-   *    (If you want to test offline, no Thunkable)
-   **************************************************************/
-  /*
-  (async () => {
-    const data = await fetchSmartTimes(
-      "26b2123a-e585-42cc-8f18-16f2ec4ea8a4", // API KEY
-      "Novato Downtown",
-      "202501030700",
-      "north"
-    );
-    document.getElementById('status').textContent = `Next Trip from ${data.station} at ${data.nextDepartureTime}`;
-    displayResults(data);
-  })();
-  */
+   * 4) (Optional) Debugging in a normal browser
+   *    Uncomment if you want to test outside Thunkable
+   **************************************************************
+   /*
+   (async () => {
+     const data = await fetchSmartTimes(
+       "26b2123a-e585-42cc-8f18-16f2ec4ea8a4", // API KEY
+       "Novato Downtown",
+       "202501030700",
+       "north"
+     );
+     document.getElementById('status').textContent =
+       `Next Trip from ${data.station} at ${data.nextDepartureTime}`;
+     displayResults(data);
+   })();
+   */
 </script>
 
 </body>
