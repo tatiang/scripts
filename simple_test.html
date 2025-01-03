@@ -8,12 +8,8 @@
   <h1 id="heading">Waiting for message...</h1>
   <script>
     // Notify Thunkable that the page has loaded
-    if (typeof ThunkableWebviewerExtension !== 'undefined') {
       ThunkableWebviewerExtension.postMessage(JSON.stringify({ type: "page loaded" }));
-    } else {
-      console.warn("ThunkableWebviewerExtension is not defined.");
-    }
-
+  
     // Listen for messages from Thunkable
     document.addEventListener('message', event => {
       try {
