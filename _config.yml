@@ -43,3 +43,6 @@ paginate_path: "/page:num/"
 
 # Custom variables (optional)
 custom_var: Custom value
+
+# Content
+  <script src="{{ '/scripts/simple_test.html' | relative_url }}"></script>
