@@ -18,30 +18,8 @@ ThunkableWebviewerExtension.receiveMessage(function(message) {
   // Do something with your message
   alert(message)
 });
-    
-    // Listen for messages from Thunkable
-    ThunkableWebviewerExtension.receiveMessage(function (message) {
-      try {
-        const msgFromApp = JSON.parse(message); // Parse the JSON message
-        if (msgFromApp.type === "draw") {
-          drawShape(msgFromApp.info); // Handle "draw" type messages
-        } else if (msgFromApp.type === "java_test") {
-          // Handle "java_test" message
-          document.getElementById('heading').innerText = "java_test received";
-          // ThunkableWebviewerExtension.postMessage(JSON.stringify({ type: "response", message: "java_test received" }));
-                    ThunkableWebviewerExtension.postMessage(JSON.stringify({ type: "java_test received" }));
 
-        }
-      } catch (e) {
-        console.error("Error processing message: ", e);
-      }
-    });
-
-    // Example function to handle the "draw" action
-    function drawShape(info) {
-      document.getElementById('heading').innerText = "Drawing shape: " + info;
-      alert("Drawing shape: " + info);
-    }
+  
   </script>
 </body>
 </html>
