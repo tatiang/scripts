@@ -22,7 +22,9 @@
         } else if (msgFromApp.type === "java_test") {
           // Handle "java_test" message
           document.getElementById('heading').innerText = "java_test received";
-          ThunkableWebviewerExtension.postMessage(JSON.stringify({ type: "response", message: "java_test received" }));
+          // ThunkableWebviewerExtension.postMessage(JSON.stringify({ type: "response", message: "java_test received" }));
+                    ThunkableWebviewerExtension.postMessage(JSON.stringify({ type: "java_test received" }));
+
         }
       } catch (e) {
         console.error("Error processing message: ", e);
