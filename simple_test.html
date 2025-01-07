@@ -12,27 +12,12 @@
       ThunkableWebviewerExtension.postMessage(JSON.stringify({ type: "page loaded" }));
     };
 
-    ThunkableWebviewerExtension.receiveMessage(function(message) {
-      document.getElementById('heading').innerText = "Message received: " + message;
-      alert("Message received: " + message);
-      
-      try {
-        const msgFromApp = JSON.parse(message);
-        if (msgFromApp.type === "draw") {
-          drawShape(msgFromApp.info);
-        } else if (msgFromApp.type === "java_test") {
-          document.getElementById('heading').innerText = "java_test received";
-          ThunkableWebviewerExtension.postMessage(JSON.stringify({ type: "response", message: "java_test received" }));
-        }
-      } catch (e) {
-        console.error("Error processing message: ", e);
-      }
-    });
+  // when we get a message from the app, display it on the page
+ThunkableWebviewerExtension.receiveMessage(function(message) {
+  // Do something with your message
+      ThunkableWebviewerExtension.postMessage(JSON.stringify({ type: "RECEIVED" }));
+});
 
-    function drawShape(info) {
-      document.getElementById('heading').innerText = "Drawing shape: " + info;
-      alert("Drawing shape: " + info);
-    }
   </script>
 </body>
 </html>
