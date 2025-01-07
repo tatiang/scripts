@@ -14,9 +14,14 @@
 
   // when we get a message from the app, display it on the page
 ThunkableWebviewerExtension.receiveMessage(function(message) {
-  // Do something with your message
-      ThunkableWebviewerExtension.postMessage(JSON.stringify({ type: "RECEIVED" }));
+  // Parse the received message
+  let receivedMessage = message; // This directly passes the message back
+  document.getElementById("heading").innerText = "Message: " + receivedMessage;
+
+  // Post the message back to Thunkable
+  ThunkableWebviewerExtension.postMessage(receivedMessage);
 });
+
 
   </script>
 </body>
