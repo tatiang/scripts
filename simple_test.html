@@ -17,7 +17,8 @@
     // when we get a message from the app, display it on the page
     ThunkableWebviewerExtension.receiveMessage(function(message) {
       document.getElementById('messageDisplay').innerHTML = message;
-    });
+      ThunkableWebviewerExtension.postMessage(message);
+});
 
     // when we get a message from the app that needs a return value
     // return the string 'fast response' unless the message is
