@@ -8,21 +8,21 @@
   <h1 id="heading">Waiting for message...</h1>
   <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js" type="text/javascript"></script>
   <script>
-    // When the page loads, post a "page loaded" message back to the app
-    window.onload = function() {
+    // Page load event
+    window.onload = function () {
       document.getElementById("heading").innerText = "Page Loaded!";
       ThunkableWebviewerExtension.postMessage("Page loaded successfully");
     };
 
-    // Listen for messages from the Thunkable app
-    ThunkableWebviewerExtension.receiveMessage(function(message) {
+    // Receive message from Thunkable
+    ThunkableWebviewerExtension.receiveMessage(function (message) {
       console.log("Message received from Thunkable:", message);
-      
-      // Display the received message in the heading
+
+      // Update the heading with the received message
       document.getElementById("heading").innerText = "Message: " + message;
 
-      // Send the received message back to Thunkable
-      ThunkableWebviewerExtension.postMessage("Received: " + message);
+      // Post the same message back to Thunkable
+      ThunkableWebviewerExtension.postMessage("Message received: " + message);
     });
   </script>
 </body>
