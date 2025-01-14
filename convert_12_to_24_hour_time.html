@@ -19,7 +19,7 @@
         var regex = /^(\d{1,2}):(\d{2})\s*(AM|PM)$/i;
         var match = time12.match(regex);
         if (!match) {
-          throw new Error("Invalid format. Use HH:MM AM/PM.");
+          throw new Error("Invalid format. ### Use HH:MM AM/PM.");
         }
         
         var hours = parseInt(match[1], 10);
