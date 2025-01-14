@@ -8,29 +8,30 @@
   </head>
   <body>
     <script type="text/javascript">
-      // Function to parse a time string.
+      // Function to sanitize and parse a time string.
       // Accepts "HH:MM:SS" or "(H)H:MM" (seconds default to 0 if omitted).
       function parseTime(timeStr) {
-        // Log the raw input.
+        // Log the raw input (for debugging purposes).
         console.log("Raw timeStr:", timeStr);
         // Remove any characters that are not digits or colon.
         timeStr = timeStr.replace(/[^\d:]/g, "").trim();
-        console.log("Cleaned timeStr:", timeStr);
+        console.log("Sanitized timeStr:", timeStr);
+
         const parts = timeStr.split(':');
         console.log("Split parts:", parts);
+
         if (parts.length < 2 || parts.length > 3) {
           throw new Error("Invalid time format. Expected HH:MM or HH:MM:SS.");
         }
         const hour = parseInt(parts[0], 10);
         const minute = parseInt(parts[1], 10);
-        // If seconds are provided, use them; otherwise assume 0.
+        // If seconds are provided, use them; otherwise, assume 0.
         const second = parts.length === 3 ? parseInt(parts[2], 10) : 0;
         console.log("Parsed numbers:", { hour, minute, second });
-        // Validate that each part is a valid number.
+
         if (isNaN(hour) || isNaN(minute) || isNaN(second)) {
           throw new Error("Time parts must be valid numbers.");
         }
-        // Validate that minutes and seconds are in valid ranges.
         if (minute < 0 || minute > 59 || second < 0 || second > 59) {
           throw new Error("Minutes and seconds must be between 0 and 59.");
         }
@@ -38,7 +39,7 @@
       }
 
       // Function to compare two times.
-      // Returns -1 if time1 comes before time2, 1 if time1 comes after time2, and 0 if equal.
+      // Returns -1 if time1 comes before time2, 1 if time1 is after time2, and 0 if they are equal.
       function compareTimes(time1, time2) {
         const t1Seconds = parseTime(time1);
         const t2Seconds = parseTime(time2);
@@ -63,18 +64,18 @@
       // Combined message processor.
       function processMessage(message) {
         console.log("Raw message received:", message);
-        // Trim whitespace.
+        // Remove any unwanted whitespace.
         message = message.trim();
 
-        // Remove wrapping quotes if the message is surrounded by them.
+        // Remove wrapping quotes if present.
         if (message.startsWith('"') && message.endsWith('"')) {
           message = message.substring(1, message.length - 1).trim();
         }
-        console.log("Message after trimming/quote removal:", message);
+        console.log("Message after trimming and removing quotes:", message);
 
         // Check if the message starts with "duration" (case-insensitive).
         if (message.toLowerCase().startsWith("duration")) {
-          // Remove the "duration" prefix and trim.
+          // Remove the "duration" prefix and trim the result.
           message = message.substring("duration".length).trim();
           console.log("After removing 'duration' prefix:", message);
           const parts = message.split('#');
@@ -86,7 +87,7 @@
           console.log("Duration times:", { time1, time2 });
           return calculateDuration(time1, time2);
         } else {
-          // Assume message is of format "time1#time2".
+          // Process as a time-comparison message ("time1#time2").
           const parts = message.split('#');
           if (parts.length !== 2) {
             return "Error: Provide two times separated by '#'.";
