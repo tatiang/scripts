@@ -59,11 +59,11 @@
           const result = compareTimes(time1, time2);
           let resultMessage;
           if (result === -1) {
-            resultMessage = `"time1"`;
+            resultMessage = "time1";
           } else if (result === 1) {
-            resultMessage = `"time2"`;
+            resultMessage = "time2";
           } else {
-            resultMessage = `"equal"`;
+            resultMessage = "equal";
           }
           callback(resultMessage);
         } catch (error) {
@@ -84,11 +84,11 @@
           const result = compareTimes(time1, time2);
           let resultMessage;
           if (result === -1) {
-            resultMessage = `"time1"`;
+            resultMessage = "time1";
           } else if (result === 1) {
-            resultMessage = `"time2"`;
+            resultMessage = "time2";
           } else {
-            resultMessage = `"equal"`;
+            resultMessage = "equal";
           }
           ThunkableWebviewerExtension.postMessage(resultMessage);
         } catch (error) {
