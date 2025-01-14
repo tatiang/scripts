@@ -83,4 +83,10 @@
           // Send error message back to Thunkable app
           ThunkableWebviewerExtension.postMessage(`Error: ${error.message}`);
         }
- 
+      });
+
+      // Call the onScreenOpen function when the script loads
+      window.onload = onScreenOpen;
+    </script>
+  </body>
+</html>
