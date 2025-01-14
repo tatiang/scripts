@@ -34,11 +34,17 @@
       // Function to handle incoming messages that expect a return value
       ThunkableWebviewerExtension.receiveMessageWithReturnValue(function(message, callback) {
         try {
-          const inputTime = message.trim();
+          let inputTime = message.trim().replace(/\s+/g, " ");
+          console.log(`Raw input received: "${inputTime}"`);
 
           // Validate input format using regex
-          if (!/^\d{1,2}:\d{2}\s(AM|PM)$/i.test(inputTime)) {
-            throw new Error("Invalid format! Use HH:MM AM/PM.");
+          if (!/^\d{1,2}:\d{2}\s(AM|PM)$/i.test(inputTime.toUpperCase())) {
+            // Attempt to parse using Date object for edge cases
+            const parsedTime = new Date(`1970-01-01T${inputTime}`);
+            if (isNaN(parsedTime)) {
+              throw new Error("Invalid format! Use HH:MM AM/PM.");
+            }
+            inputTime = parsedTime.toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', hour12: true });
           }
 
           // Perform conversion
@@ -55,11 +61,17 @@
       // Handle incoming messages that do not expect a return value
       ThunkableWebviewerExtension.receiveMessage(function(message) {
         try {
-          const inputTime = message.trim();
+          let inputTime = message.trim().replace(/\s+/g, " ");
+          console.log(`Raw input received: "${inputTime}"`);
 
           // Validate input format using regex
-          if (!/^\d{1,2}:\d{2}\s(AM|PM)$/i.test(inputTime)) {
-            throw new Error("Invalid format! Use HH:MM AM/PM.");
+          if (!/^\d{1,2}:\d{2}\s(AM|PM)$/i.test(inputTime.toUpperCase())) {
+            // Attempt to parse using Date object for edge cases
+            const parsedTime = new Date(`1970-01-01T${inputTime}`);
+            if (isNaN(parsedTime)) {
+              throw new Error("Invalid format! Use HH:MM AM/PM.");
+            }
+            inputTime = parsedTime.toLocaleTimeString("en-US", { hour: '2-digit', minute: '2-digit', hour12: true });
           }
 
           // Perform conversion
@@ -71,10 +83,4 @@
           // Send error message back to Thunkable app
           ThunkableWebviewerExtension.postMessage(`Error: ${error.message}`);
         }
-      });
-
-      // Call the onScreenOpen function when the script loads
-      window.onload = onScreenOpen;
-    </script>
-  </body>
-</html>
+ 
