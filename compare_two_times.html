@@ -1,5 +1,4 @@
 <!DOCTYPE html>
-// This has to be hosted at rawcdn.githack.com
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -35,7 +34,6 @@
       function compareTimes(time1, time2) {
         const t1Seconds = parseTime(time1);
         const t2Seconds = parseTime(time2);
-
         if (t1Seconds < t2Seconds) {
           return -1;
         } else if (t1Seconds > t2Seconds) {
@@ -45,26 +43,54 @@
         }
       }
 
-      // Message handler expecting a return value.
-      ThunkableWebviewerExtension.receiveMessageWithReturnValue(function(message, callback) {
-        try {
-          // Expect the message format to be "time1#time2"
+      // Function to compute the duration difference (in minutes) between two times.
+      function calculateDuration(time1, time2) {
+        const t1Seconds = parseTime(time1);
+        const t2Seconds = parseTime(time2);
+        // Calculate absolute difference in seconds.
+        const diffSeconds = Math.abs(t2Seconds - t1Seconds);
+        // Convert seconds to minutes (rounded down to the nearest whole minute).
+        const diffMinutes = Math.floor(diffSeconds / 60);
+        return diffMinutes + " minutes";
+      }
+
+      // Combined handler function to process the message.
+      function processMessage(message) {
+        // Check if the message starts with "duration" (case-insensitive).
+        if (message.toLowerCase().startsWith("duration")) {
+          // Remove the "duration" prefix.
+          message = message.substring("duration".length);
+          // Continue to split the remaining string by "#".
           const parts = message.split('#');
           if (parts.length !== 2) {
-            callback("Error: Provide two times separated by '#'.");
-            return;
+            return "Error: Provide two times separated by '#' after 'duration'.";
+          }
+          const time1 = parts[0].trim();
+          const time2 = parts[1].trim();
+          return calculateDuration(time1, time2);
+        } else {
+          // Assume message is of format "time1#time2" for comparing which time is earlier.
+          const parts = message.split('#');
+          if (parts.length !== 2) {
+            return "Error: Provide two times separated by '#'.";
           }
           const time1 = parts[0].trim();
           const time2 = parts[1].trim();
           const result = compareTimes(time1, time2);
-          let resultMessage;
           if (result === -1) {
-            resultMessage = "time1";
+            return "time1";
           } else if (result === 1) {
-            resultMessage = "time2";
+            return "time2";
           } else {
-            resultMessage = "equal";
+            return "equal";
           }
+        }
+      }
+
+      // Message handler expecting a return value.
+      ThunkableWebviewerExtension.receiveMessageWithReturnValue(function(message, callback) {
+        try {
+          const resultMessage = processMessage(message);
           callback(resultMessage);
         } catch (error) {
           callback("Error: " + error.message);
@@ -74,22 +100,7 @@
       // Message handler for messages that don't expect a return value.
       ThunkableWebviewerExtension.receiveMessage(function(message) {
         try {
-          const parts = message.split('#');
-          if (parts.length !== 2) {
-            ThunkableWebviewerExtension.postMessage("Error: Provide two times separated by '#'.");
-            return;
-          }
-          const time1 = parts[0].trim();
-          const time2 = parts[1].trim();
-          const result = compareTimes(time1, time2);
-          let resultMessage;
-          if (result === -1) {
-            resultMessage = "time1";
-          } else if (result === 1) {
-            resultMessage = "time2";
-          } else {
-            resultMessage = "equal";
-          }
+          const resultMessage = processMessage(message);
           ThunkableWebviewerExtension.postMessage(resultMessage);
         } catch (error) {
           ThunkableWebviewerExtension.postMessage("Error: " + error.message);
