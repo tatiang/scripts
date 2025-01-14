@@ -11,7 +11,10 @@
       // Function to parse a time string.
       // Accepts "HH:MM:SS" or "(H)H:MM" (seconds default to 0 if omitted).
       function parseTime(timeStr) {
+        // Log the raw input to help with debugging.
+        console.log("Parsing time string:", timeStr);
         const parts = timeStr.split(':');
+        console.log("Split parts:", parts);
         if (parts.length < 2 || parts.length > 3) {
           throw new Error("Invalid time format. Expected HH:MM or HH:MM:SS.");
         }
@@ -19,6 +22,8 @@
         const minute = parseInt(parts[1], 10);
         // If seconds are provided, use them; otherwise assume 0.
         const second = parts.length === 3 ? parseInt(parts[2], 10) : 0;
+        // Debug log the parsed numbers.
+        console.log("Parsed values:", { hour, minute, second });
         // Validate that each part is a number.
         if (isNaN(hour) || isNaN(minute) || isNaN(second)) {
           throw new Error("Time parts must be valid numbers.");
@@ -31,7 +36,7 @@
       }
 
       // Function to compare two times.
-      // Returns -1 if time1 comes before time2, 1 if time1 is after time2, and 0 if equal.
+      // Returns -1 if time1 comes before time2, 1 if time1 comes after time2, and 0 if equal.
       function compareTimes(time1, time2) {
         const t1Seconds = parseTime(time1);
         const t2Seconds = parseTime(time2);
@@ -57,24 +62,28 @@
 
       // Combined message processor.
       function processMessage(message) {
+        console.log("Raw message received:", message);
         // Trim leading/trailing whitespace.
         message = message.trim();
 
-        // Remove wrapping quotes, if any.
+        // Remove wrapping quotes if the message is surrounded by them.
         if (message.startsWith('"') && message.endsWith('"')) {
           message = message.substring(1, message.length - 1).trim();
         }
+        console.log("Message after trimming and quote removal:", message);
 
         // Check if the message starts with "duration" (case-insensitive).
         if (message.toLowerCase().startsWith("duration")) {
           // Remove the "duration" prefix and trim any extra spaces.
           message = message.substring("duration".length).trim();
+          console.log("After removing 'duration' prefix:", message);
           const parts = message.split('#');
           if (parts.length !== 2) {
             return "Error: Provide two times separated by '#' after 'duration'.";
           }
           const time1 = parts[0].trim();
           const time2 = parts[1].trim();
+          console.log("Duration times:", { time1, time2 });
           return calculateDuration(time1, time2);
         } else {
           // Assume the message is in the format "time1#time2".
@@ -84,6 +93,7 @@
           }
           const time1 = parts[0].trim();
           const time2 = parts[1].trim();
+          console.log("Comparison times:", { time1, time2 });
           const result = compareTimes(time1, time2);
           if (result === -1) {
             return "time1";
