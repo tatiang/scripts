@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+// This has to be hosted at rawcdn.githack.com
 <html>
   <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -58,11 +59,11 @@
           const result = compareTimes(time1, time2);
           let resultMessage;
           if (result === -1) {
-            resultMessage = `"${time1}" comes before "${time2}"`;
+            resultMessage = `"time1"`;
           } else if (result === 1) {
-            resultMessage = `"${time1}" comes after "${time2}"`;
+            resultMessage = `"time2"`;
           } else {
-            resultMessage = `"${time1}" is equal to "${time2}"`;
+            resultMessage = `"equal"`;
           }
           callback(resultMessage);
         } catch (error) {
@@ -83,11 +84,11 @@
           const result = compareTimes(time1, time2);
           let resultMessage;
           if (result === -1) {
-            resultMessage = `"${time1}" comes before "${time2}"`;
+            resultMessage = `"time1"`;
           } else if (result === 1) {
-            resultMessage = `"${time1}" comes after "${time2}"`;
+            resultMessage = `"time2"`;
           } else {
-            resultMessage = `"${time1}" is equal to "${time2}"`;
+            resultMessage = `"equal"`;
           }
           ThunkableWebviewerExtension.postMessage(resultMessage);
         } catch (error) {
