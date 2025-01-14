@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Include the Thunkable Web Viewer Extension -->
+    <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js" type="text/javascript"></script>
+    <title>Time Comparator</title>
+  </head>
+  <body>
+    <script type="text/javascript">
+      // Function to parse a time string.
+      // It accepts "HH:MM:SS" format or "(H)H:MM" format (seconds default to 0 if omitted).
+      function parseTime(timeStr) {
+        const parts = timeStr.split(':');
+        if (parts.length < 2 || parts.length > 3) {
+          throw new Error("Invalid time format. Expected HH:MM or HH:MM:SS.");
+        }
+        const hour = parseInt(parts[0], 10);
+        const minute = parseInt(parts[1], 10);
+        // If seconds are provided, use them; otherwise assume 0.
+        const second = parts.length === 3 ? parseInt(parts[2], 10) : 0;
+        // Validate that each part is a number and within normal ranges.
+        if (isNaN(hour) || isNaN(minute) || isNaN(second)) {
+          throw new Error("Time parts must be valid numbers.");
+        }
+        if (minute < 0 || minute > 59 || second < 0 || second > 59) {
+          throw new Error("Minutes and seconds must be between 0 and 59.");
+        }
+        return hour * 3600 + minute * 60 + second;
+      }
+
+      // Function to compare two times.
+      // Returns -1 if time1 comes before time2, 1 if time1 comes after time2, and 0 if they are equal.
+      function compareTimes(time1, time2) {
+        const t1Seconds = parseTime(time1);
+        const t2Seconds = parseTime(time2);
+
+        if (t1Seconds < t2Seconds) {
+          return -1;
+        } else if (t1Seconds > t2Seconds) {
+          return 1;
+        } else {
+          return 0;
+        }
+      }
+
+      // Message handler expecting a return value.
+      ThunkableWebviewerExtension.receiveMessageWithReturnValue(function(message, callback) {
+        try {
+          // Expect the message format to be "time1#time2"
+          const parts = message.split('#');
+          if (parts.length !== 2) {
+            callback("Error: Provide two times separated by '#'.");
+            return;
+          }
+          const time1 = parts[0].trim();
+          const time2 = parts[1].trim();
+          const result = compareTimes(time1, time2);
+          let resultMessage;
+          if (result === -1) {
+            resultMessage = `"${time1}" comes before "${time2}"`;
+          } else if (result === 1) {
+            resultMessage = `"${time1}" comes after "${time2}"`;
+          } else {
+            resultMessage = `"${time1}" is equal to "${time2}"`;
+          }
+          callback(resultMessage);
+        } catch (error) {
+          callback("Error: " + error.message);
+        }
+      });
+
+      // Message handler for messages that don't expect a return value.
+      ThunkableWebviewerExtension.receiveMessage(function(message) {
+        try {
+          const parts = message.split('#');
+          if (parts.length !== 2) {
+            ThunkableWebviewerExtension.postMessage("Error: Provide two times separated by '#'.");
+            return;
+          }
+          const time1 = parts[0].trim();
+          const time2 = parts[1].trim();
+          const result = compareTimes(time1, time2);
+          let resultMessage;
+          if (result === -1) {
+            resultMessage = `"${time1}" comes before "${time2}"`;
+          } else if (result === 1) {
+            resultMessage = `"${time1}" comes after "${time2}"`;
+          } else {
+            resultMessage = `"${time1}" is equal to "${time2}"`;
+          }
+          ThunkableWebviewerExtension.postMessage(resultMessage);
+        } catch (error) {
+          ThunkableWebviewerExtension.postMessage("Error: " + error.message);
+        }
+      });
+
+      // Optional: Post-load initialization.
+      window.onload = function() {
+        console.log("Time comparator loaded and ready.");
+      };
+    </script>
+  </body>
+</html>
