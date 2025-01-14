@@ -57,9 +57,17 @@
 
       // Combined message processor.
       function processMessage(message) {
+        // Trim leading/trailing whitespace.
+        message = message.trim();
+
+        // Remove wrapping quotes, if any.
+        if (message.startsWith('"') && message.endsWith('"')) {
+          message = message.substring(1, message.length - 1).trim();
+        }
+
         // Check if the message starts with "duration" (case-insensitive).
         if (message.toLowerCase().startsWith("duration")) {
-          // Remove the "duration" prefix and trim extra spaces.
+          // Remove the "duration" prefix and trim any extra spaces.
           message = message.substring("duration".length).trim();
           const parts = message.split('#');
           if (parts.length !== 2) {
