@@ -9,7 +9,7 @@
   <body>
     <script type="text/javascript">
       // Function to parse a time string.
-      // It accepts "HH:MM:SS" format or "(H)H:MM" format (seconds default to 0 if omitted).
+      // Accepts "HH:MM:SS" or "(H)H:MM" (seconds default to 0 if omitted).
       function parseTime(timeStr) {
         const parts = timeStr.split(':');
         if (parts.length < 2 || parts.length > 3) {
@@ -19,10 +19,11 @@
         const minute = parseInt(parts[1], 10);
         // If seconds are provided, use them; otherwise assume 0.
         const second = parts.length === 3 ? parseInt(parts[2], 10) : 0;
-        // Validate that each part is a number and within normal ranges.
+        // Validate that each part is a number.
         if (isNaN(hour) || isNaN(minute) || isNaN(second)) {
           throw new Error("Time parts must be valid numbers.");
         }
+        // Validate that minutes and seconds are in the correct range.
         if (minute < 0 || minute > 59 || second < 0 || second > 59) {
           throw new Error("Minutes and seconds must be between 0 and 59.");
         }
@@ -30,7 +31,7 @@
       }
 
       // Function to compare two times.
-      // Returns -1 if time1 comes before time2, 1 if time1 comes after time2, and 0 if they are equal.
+      // Returns -1 if time1 comes before time2, 1 if time1 is after time2, and 0 if equal.
       function compareTimes(time1, time2) {
         const t1Seconds = parseTime(time1);
         const t2Seconds = parseTime(time2);
@@ -43,24 +44,23 @@
         }
       }
 
-      // Function to compute the duration difference (in minutes) between two times.
+      // Function to compute duration difference (in minutes) between two times.
       function calculateDuration(time1, time2) {
         const t1Seconds = parseTime(time1);
         const t2Seconds = parseTime(time2);
         // Calculate absolute difference in seconds.
         const diffSeconds = Math.abs(t2Seconds - t1Seconds);
-        // Convert seconds to minutes (rounded down to the nearest whole minute).
+        // Convert seconds to minutes (rounded down).
         const diffMinutes = Math.floor(diffSeconds / 60);
         return diffMinutes + " minutes";
       }
 
-      // Combined handler function to process the message.
+      // Combined message processor.
       function processMessage(message) {
         // Check if the message starts with "duration" (case-insensitive).
         if (message.toLowerCase().startsWith("duration")) {
-          // Remove the "duration" prefix.
-          message = message.substring("duration".length);
-          // Continue to split the remaining string by "#".
+          // Remove the "duration" prefix and trim extra spaces.
+          message = message.substring("duration".length).trim();
           const parts = message.split('#');
           if (parts.length !== 2) {
             return "Error: Provide two times separated by '#' after 'duration'.";
@@ -69,7 +69,7 @@
           const time2 = parts[1].trim();
           return calculateDuration(time1, time2);
         } else {
-          // Assume message is of format "time1#time2" for comparing which time is earlier.
+          // Assume the message is in the format "time1#time2".
           const parts = message.split('#');
           if (parts.length !== 2) {
             return "Error: Provide two times separated by '#'.";
@@ -107,7 +107,7 @@
         }
       });
 
-      // Optional: Post-load initialization.
+      // Post-load initialization.
       window.onload = function() {
         console.log("Time comparator loaded and ready.");
       };
