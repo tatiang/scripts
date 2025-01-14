@@ -4,45 +4,61 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <!-- Include the Thunkable Web Viewer Extension -->
     <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js" type="text/javascript"></script>
-    <title>Time Comparator</title>
+    <title>Time Comparator & Duration Calculator</title>
   </head>
   <body>
     <script type="text/javascript">
-      // Function to sanitize and parse a time string.
-      // Accepts "HH:MM:SS" or "(H)H:MM" (seconds default to 0 if omitted).
+      // ----------------------------------------------------------------------------
+      // 1. Function to parse (and sanitize) a time string.
+      //    Accepts "HH:MM:SS" or "(H)H:MM" (seconds default to 0 if omitted).
+      // ----------------------------------------------------------------------------
       function parseTime(timeStr) {
-        // Log the raw input (for debugging purposes).
-        console.log("Raw timeStr:", timeStr);
-        // Remove any characters that are not digits or colon.
-        timeStr = timeStr.replace(/[^\d:]/g, "").trim();
-        console.log("Sanitized timeStr:", timeStr);
+        console.log("Raw timeStr received by parseTime:", JSON.stringify(timeStr));
 
+        // Remove any characters that are not digits or colons.
+        // For example, hidden control characters, quotes, whitespace, etc.
+        timeStr = timeStr.replace(/[^\d:]/g, "").trim();
+        console.log("Sanitized timeStr:", JSON.stringify(timeStr));
+
+        // Split on colon.
         const parts = timeStr.split(':');
         console.log("Split parts:", parts);
 
+        // Must be either HH:MM or HH:MM:SS
         if (parts.length < 2 || parts.length > 3) {
+          // Return an error message that we can handle gracefully.
           throw new Error("Invalid time format. Expected HH:MM or HH:MM:SS.");
         }
+
+        // Convert each part to a number (parseInt returns NaN if invalid).
         const hour = parseInt(parts[0], 10);
         const minute = parseInt(parts[1], 10);
-        // If seconds are provided, use them; otherwise, assume 0.
-        const second = parts.length === 3 ? parseInt(parts[2], 10) : 0;
-        console.log("Parsed numbers:", { hour, minute, second });
+        const second = (parts.length === 3) ? parseInt(parts[2], 10) : 0;
 
+        // Log for debugging.
+        console.log("Parsed numbers (hour, minute, second):", hour, minute, second);
+
+        // Validate the numeric parts.
         if (isNaN(hour) || isNaN(minute) || isNaN(second)) {
           throw new Error("Time parts must be valid numbers.");
         }
-        if (minute < 0 || minute > 59 || second < 0 || second > 59) {
-          throw new Error("Minutes and seconds must be between 0 and 59.");
+        if (hour < 0 || minute < 0 || minute > 59 || second < 0 || second > 59) {
+          throw new Error("Hour, minute, or second out of range.");
         }
+
+        // Convert to seconds from midnight.
         return hour * 3600 + minute * 60 + second;
       }
 
-      // Function to compare two times.
-      // Returns -1 if time1 comes before time2, 1 if time1 is after time2, and 0 if they are equal.
+      // ----------------------------------------------------------------------------
+      // 2. Compare two times (in "HH:MM" or "HH:MM:SS" format).
+      //    Returns -1 if time1 < time2, 1 if time1 > time2, and 0 if they are equal.
+      // ----------------------------------------------------------------------------
       function compareTimes(time1, time2) {
+        // parseTime can throw, so we put calls in a try/catch in processMessage.
         const t1Seconds = parseTime(time1);
         const t2Seconds = parseTime(time2);
+
         if (t1Seconds < t2Seconds) {
           return -1;
         } else if (t1Seconds > t2Seconds) {
@@ -52,61 +68,98 @@
         }
       }
 
-      // Function to compute the duration difference (in minutes) between two times.
+      // ----------------------------------------------------------------------------
+      // 3. Calculate duration in minutes between two times.
+      //    Returns a string like "30 minutes".
+      // ----------------------------------------------------------------------------
       function calculateDuration(time1, time2) {
         const t1Seconds = parseTime(time1);
         const t2Seconds = parseTime(time2);
+
+        // Absolute difference in seconds
         const diffSeconds = Math.abs(t2Seconds - t1Seconds);
+        // Convert to whole minutes
         const diffMinutes = Math.floor(diffSeconds / 60);
+
         return diffMinutes + " minutes";
       }
 
-      // Combined message processor.
+      // ----------------------------------------------------------------------------
+      // 4. Process the message. We handle two cases:
+      //    - "durationHH:MM#HH:MM" => return the absolute difference in minutes.
+      //    - "HH:MM#HH:MM" => compare which time is earlier/later or equal.
+      // ----------------------------------------------------------------------------
       function processMessage(message) {
-        console.log("Raw message received:", message);
-        // Remove any unwanted whitespace.
+        console.log("Raw message received:", JSON.stringify(message));
+
+        // Trim leading/trailing whitespace
         message = message.trim();
 
-        // Remove wrapping quotes if present.
+        // Remove wrapping quotes if present
         if (message.startsWith('"') && message.endsWith('"')) {
           message = message.substring(1, message.length - 1).trim();
         }
-        console.log("Message after trimming and removing quotes:", message);
+        console.log("Message after trimming/quote removal:", JSON.stringify(message));
 
-        // Check if the message starts with "duration" (case-insensitive).
-        if (message.toLowerCase().startsWith("duration")) {
-          // Remove the "duration" prefix and trim the result.
-          message = message.substring("duration".length).trim();
-          console.log("After removing 'duration' prefix:", message);
+        // Check if it starts with "duration" (case-insensitive)
+        const prefix = "duration";
+        if (message.toLowerCase().startsWith(prefix)) {
+          // Remove the prefix from the message
+          message = message.substring(prefix.length).trim();
+          console.log("After removing 'duration' prefix:", JSON.stringify(message));
+
+          // Split on '#'
           const parts = message.split('#');
           if (parts.length !== 2) {
             return "Error: Provide two times separated by '#' after 'duration'.";
           }
+
+          // The times could still contain unexpected characters, but parseTime cleans them.
           const time1 = parts[0].trim();
           const time2 = parts[1].trim();
-          console.log("Duration times:", { time1, time2 });
-          return calculateDuration(time1, time2);
-        } else {
-          // Process as a time-comparison message ("time1#time2").
+          console.log("Duration times -> time1:", JSON.stringify(time1), "time2:", JSON.stringify(time2));
+
+          // Now do the duration calculation
+          try {
+            return calculateDuration(time1, time2);
+          } catch (err) {
+            // Catch any parseTime errors
+            console.error(err);
+            return "Error: " + err.message;
+          }
+        } 
+        else {
+          // Otherwise, we assume "HH:MM#HH:MM" for comparison
           const parts = message.split('#');
           if (parts.length !== 2) {
             return "Error: Provide two times separated by '#'.";
           }
+
           const time1 = parts[0].trim();
           const time2 = parts[1].trim();
-          console.log("Comparison times:", { time1, time2 });
-          const result = compareTimes(time1, time2);
-          if (result === -1) {
-            return "time1";
-          } else if (result === 1) {
-            return "time2";
-          } else {
-            return "equal";
+          console.log("Comparison times -> time1:", JSON.stringify(time1), "time2:", JSON.stringify(time2));
+
+          try {
+            const result = compareTimes(time1, time2);
+            if (result === -1) {
+              return "time1";
+            } else if (result === 1) {
+              return "time2";
+            } else {
+              return "equal";
+            }
+          } catch (err) {
+            console.error(err);
+            return "Error: " + err.message;
           }
         }
       }
 
-      // Message handler expecting a return value.
+      // ----------------------------------------------------------------------------
+      // 5. Thunkable message handlers
+      // ----------------------------------------------------------------------------
+
+      // If a return value is expected:
       ThunkableWebviewerExtension.receiveMessageWithReturnValue(function(message, callback) {
         try {
           const resultMessage = processMessage(message);
@@ -116,7 +169,7 @@
         }
       });
 
-      // Message handler for messages that don't expect a return value.
+      // If no return value is expected:
       ThunkableWebviewerExtension.receiveMessage(function(message) {
         try {
           const resultMessage = processMessage(message);
@@ -126,9 +179,11 @@
         }
       });
 
-      // Post-load initialization.
+      // ----------------------------------------------------------------------------
+      // 6. Optional: Initialization after window loads
+      // ----------------------------------------------------------------------------
       window.onload = function() {
-        console.log("Time comparator loaded and ready.");
+        console.log("Time comparator & duration calculator loaded and ready.");
       };
     </script>
   </body>
