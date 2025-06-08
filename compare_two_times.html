@@ -82,61 +82,91 @@
       //    - Decides if it's a "duration" request or a time comparison.
       // ----------------------------------------------------------------
       function processMessage(message) {
-        console.log("Raw message received:", JSON.stringify(message));
+  console.log("Raw message received:", JSON.stringify(message));
 
-        // Trim leading & trailing spaces
-        message = message.trim();
+  // Trim leading & trailing spaces
+  message = message.trim();
 
-        // Remove outer quotes if present
-        if (message.startsWith('"') && message.endsWith('"')) {
-          message = message.substring(1, message.length - 1).trim();
-        }
-        console.log("Message after trimming/removing quotes:", JSON.stringify(message));
+  // Remove outer quotes if present
+  if (message.startsWith('"') && message.endsWith('"')) {
+    message = message.substring(1, message.length - 1).trim();
+  }
+  console.log("Message after trimming/removing quotes:", JSON.stringify(message));
 
-        // Check for "duration" prefix (case-insensitive)
-        const prefix = "duration";
-        if (message.toLowerCase().startsWith(prefix)) {
-          // Remove the prefix
-          message = message.substring(prefix.length).trim();
-          console.log("Message after removing 'duration' prefix:", JSON.stringify(message));
+  // Check for "duration" prefix (case-insensitive)
+  const prefix = "duration";
+  if (message.toLowerCase().startsWith(prefix)) {
+    // Ensure there's a space after 'duration'
+    if (!/^duration\s/.test(message.toLowerCase())) {
+      return "Error: Space expected after 'duration'";
+    }
 
-          // Expect time1#time2
-          const parts = message.split('#');
-          if (parts.length !== 2) {
-            return "Error: Provide two times separated by '#' after 'duration'.";
-          }
-          const time1 = parts[0].trim();
-          const time2 = parts[1].trim();
-          console.log("Duration times -> time1:", JSON.stringify(time1), "time2:", JSON.stringify(time2));
+    // Remove the prefix
+    message = message.substring(prefix.length).trim();
+    console.log("Message after removing 'duration' prefix:", JSON.stringify(message));
 
-          try {
-            return calculateDuration(time1, time2);
-          } catch (err) {
-            console.error("Error in calculateDuration:", err);
-            return "Error: " + err.message;
-          }
-        } else {
-          // Assume time comparison
-          // Expect time1#time2
-          const parts = message.split('#');
-          if (parts.length !== 2) {
-            return "Error: Provide two times separated by '#'.";
-          }
-          const time1 = parts[0].trim();
-          const time2 = parts[1].trim();
-          console.log("Comparison times -> time1:", JSON.stringify(time1), "time2:", JSON.stringify(time2));
+    // Expect time1#time2
+    const parts = message.split('#');
 
-          try {
-            const result = compareTimes(time1, time2);
-            if (result === -1) return "time1";
-            if (result === 1)  return "time2";
-            return "equal";
-          } catch (err) {
-            console.error("Error in compareTimes:", err);
-            return "Error: " + err.message;
-          }
-        }
-      }
+    if (parts.length !== 2) {
+      return "Error: Provide two times separated by '#' after 'duration'.";
+    }
+
+    const time1 = parts[0].trim();
+    const time2 = parts[1].trim();
+
+    if (!time1 && !time2) {
+      return "Error: Missing both time values.";
+    }
+    if (!time1) {
+      return "Error: Missing first time value.";
+    }
+    if (!time2) {
+      return "Error: Missing second time value.";
+    }
+
+    console.log("Duration times -> time1:", JSON.stringify(time1), "time2:", JSON.stringify(time2));
+
+    try {
+      return calculateDuration(time1, time2);
+    } catch (err) {
+      console.error("Error in calculateDuration:", err);
+      return "Error: " + err.message;
+    }
+  } else {
+    // Assume time comparison
+    const parts = message.split('#');
+
+    if (parts.length !== 2) {
+      return "Error: Provide two times separated by '#'.";
+    }
+
+    const time1 = parts[0].trim();
+    const time2 = parts[1].trim();
+
+    if (!time1 && !time2) {
+      return "Error: Missing both time values.";
+    }
+    if (!time1) {
+      return "Error: Missing first time value.";
+    }
+    if (!time2) {
+      return "Error: Missing second time value.";
+    }
+
+    console.log("Comparison times -> time1:", JSON.stringify(time1), "time2:", JSON.stringify(time2));
+
+    try {
+      const result = compareTimes(time1, time2);
+      if (result === -1) return "time1";
+      if (result === 1)  return "time2";
+      return "equal";
+    } catch (err) {
+      console.error("Error in compareTimes:", err);
+      return "Error: " + err.message;
+    }
+  }
+}
 
       // ----------------------------------------------------------------
       // 5. Thunkable Webviewer Handlers
