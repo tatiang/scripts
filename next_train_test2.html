@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Next SMART Train</title>
+  <script>
+    function timeToSeconds(t) {
+      const [h, m, s] = t.split(':').map(Number);
+      return h * 3600 + m * 60 + s;
+    }
+
+    function formatTime(t) {
+      const [h, m] = t.split(':');
+      const hour = parseInt(h, 10);
+      const suffix = hour >= 12 ? 'PM' : 'AM';
+      const formattedHour = ((hour + 11) % 12 + 1);
+      return `${formattedHour}:${m} ${suffix}`;
+    }
+
+    // Notify that the script started
+    window.addEventListener('DOMContentLoaded', () => {
+      const startupMessage = "next_train_test2.html script started";
+      document.getElementById('result').textContent = startupMessage;
+      window.parent.postMessage(startupMessage, "*");
+      console.log("✅ Script loaded and ready.");
+    });
+
+    window.addEventListener('message', (event) => {
+      console.log("🔥 Received message in HTML:", event.data);
+
+      try {
+        const msg = JSON.parse(event.data);
+        console.log("✅ Parsed message successfully:", msg);
+
+        const { date, time, departureStation, arrivalStation, fullSchedule } = msg;
+
+        const cutoffTime = time; // already in HH:MM:SS
+        const timetableFrames = fullSchedule.Content.TimetableFrame;
+        let validDepartures = [];
+
+        timetableFrames.forEach(frame => {
+          const journeys = frame.vehicleJourneys.ServiceJourney;
+
+          journeys.forEach(journey => {
+            const calls = journey.calls.Call;
+            const depIndex = calls.findIndex(call => call.ScheduledStopPointRef.ref === departureStation);
+            const arrIndex = calls.findIndex(call => call.ScheduledStopPointRef.ref === arrivalStation);
+
+            if (depIndex !== -1 && arrIndex !== -1 && depIndex < arrIndex) {
+              const depTime = calls[depIndex].Departure.Time;
+              if (timeToSeconds(depTime) < timeToSeconds(cutoffTime)) {
+                validDepartures.push(depTime);
+              }
+            }
+          });
+        });
+
+        let result = `No departures from ${departureStation} to ${arrivalStation} before ${cutoffTime} on ${date}`;
+        if (validDepartures.length > 0) {
+          const latest = validDepartures.sort((a, b) => timeToSeconds(b) - timeToSeconds(a))[0];
+          result = `Last train from ${departureStation} to ${arrivalStation} before ${cutoffTime} on ${date}: ${formatTime(latest)}`;
+        }
+
+        document.getElementById('result').textContent = result;
+window.parent.postMessage("📤 R
