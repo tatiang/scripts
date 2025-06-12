@@ -6,6 +6,22 @@
   <script>
     let smartSchedule = null; // Will hold the loaded schedule data
 
+    // Station name to stop_id mapping
+    const stationNameToId = {
+      "Windsor": "71131",
+      "Sonoma County Airport": "71121",
+      "Santa Rosa North": "71111",
+      "Santa Rosa Downtown": "71101",
+      "Rohnert Park": "71091",
+      "Cotati": "71081",
+      "Petaluma Downtown": "71071",
+      "Novato Hamilton": "71061",
+      "Novato Downtown": "71051",
+      "Marin Civic Center": "71041",
+      "San Rafael": "71031",
+      "Larkspur": "71011"
+    };
+
     // Helper functions
     function timeToSeconds(t) {
       const [h, m, s] = t.split(':').map(Number);
@@ -52,12 +68,22 @@
           return;
         }
 
+        const depCode = stationNameToId[departureStation];
+        const arrCode = stationNameToId[arrivalStation];
+
+        if (!depCode || !arrCode) {
+          const msg = "❌ Invalid station name(s).";
+          document.getElementById('result').textContent = msg;
+          window.parent.postMessage(msg, "*");
+          return;
+        }
+
         let validDepartures = [];
 
         for (const trip_id in smartSchedule) {
           const calls = smartSchedule[trip_id];
-          const depIndex = calls.findIndex(c => c.stop_id === departureStation);
-          const arrIndex = calls.findIndex(c => c.stop_id === arrivalStation);
+          const depIndex = calls.findIndex(c => c.stop_id === depCode);
+          const arrIndex = calls.findIndex(c => c.stop_id === arrCode);
 
           if (depIndex !== -1 && arrIndex !== -1 && depIndex < arrIndex) {
             const depTime = calls[depIndex].departure_time;
