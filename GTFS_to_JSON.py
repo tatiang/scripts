@@ -3,7 +3,7 @@ import zipfile
 import json
 
 # === CONFIG ===
-GTFS_ZIP = "google_transit.zip"
+GTFS_ZIP = "smart-ca-us.zip"
 SMART_ROUTE_IDS = ["SMART"]  # Add or adjust route IDs as needed
 OUTPUT_JSON = "smart_schedule.json"
 
