@@ -1,59 +1,62 @@
 import pandas as pd
 import zipfile
+import os
 import json
+import numpy as np
 
-# === CONFIG ===
-# GTFS_ZIP = "smart-ca-us.zip"
+# Set your GTFS .zip file path
 GTFS_ZIP = "/Users/tgreenleaf/Downloads/smart-ca-us.zip"
-
-SMART_ROUTE_IDS = ["SMART"]  # Add or adjust route IDs as needed
 OUTPUT_JSON = "smart_schedule.json"
 
-# === EXTRACT ZIP ===
+# Create a helper to fix numpy types
+def convert_numpy(obj):
+    if isinstance(obj, np.integer):
+        return int(obj)
+    if isinstance(obj, np.floating):
+        return float(obj)
+    return str(obj)
+
+# Create a working directory
+extract_dir = "gtfs_temp"
+os.makedirs(extract_dir, exist_ok=True)
+
+# Extract the GTFS zip
 with zipfile.ZipFile(GTFS_ZIP, 'r') as zip_ref:
-    zip_ref.extractall("gtfs_data")
+    zip_ref.extractall(extract_dir)
 
-# === LOAD GTFS FILES ===
-stops = pd.read_csv("gtfs_data/stops.txt")
-routes = pd.read_csv("gtfs_data/routes.txt")
-trips = pd.read_csv("gtfs_data/trips.txt")
-stop_times = pd.read_csv("gtfs_data/stop_times.txt")
+# Load GTFS files
+routes = pd.read_csv(os.path.join(extract_dir, "routes.txt"))
+trips = pd.read_csv(os.path.join(extract_dir, "trips.txt"))
+stop_times = pd.read_csv(os.path.join(extract_dir, "stop_times.txt"))
+stops = pd.read_csv(os.path.join(extract_dir, "stops.txt"))
 
-# === FILTER FOR SMART ROUTES ===
-smart_routes = routes[routes['route_short_name'].astype(str).str.contains("SMART", na=False)]
-smart_route_ids = smart_routes['route_id'].unique()
+# Filter SMART routes
+smart_routes = routes[routes['route_long_name'].str.contains("SMART", na=False)]
 
-smart_trips = trips[trips['route_id'].isin(smart_route_ids)]
-smart_trip_ids = smart_trips['trip_id'].unique()
+# Join to find SMART trip_ids
+smart_trips = trips[trips['route_id'].isin(smart_routes['route_id'])]
 
-smart_stop_times = stop_times[stop_times['trip_id'].isin(smart_trip_ids)]
+# Filter stop_times to SMART only
+smart_stop_times = stop_times[stop_times['trip_id'].isin(smart_trips['trip_id'])]
 
-# === JOIN DATA ===
-merged = smart_stop_times.merge(smart_trips, on='trip_id')
-merged = merged.merge(stops, on='stop_id')
-merged = merged.sort_values(by=['trip_id', 'stop_sequence'])
+# Merge stop info for names
+smart_stop_times = smart_stop_times.merge(stops[['stop_id', 'stop_name']], on='stop_id', how='left')
 
-# === BUILD OUTPUT ===
+# Group data by trip_id
 output = {}
-
-for trip_id, group in merged.groupby('trip_id'):
-    trip_info = {
-        "trip_id": trip_id,
-        "route_id": group.iloc[0]['route_id'],
-        "direction_id": int(group.iloc[0]['direction_id']),
-        "stops": []
-    }
-    for _, row in group.iterrows():
-        trip_info["stops"].append({
+for trip_id, group in smart_stop_times.groupby('trip_id'):
+    output[trip_id] = [
+        {
             "stop_id": row["stop_id"],
             "stop_name": row["stop_name"],
             "arrival_time": row["arrival_time"],
             "departure_time": row["departure_time"]
-        })
-    output[trip_id] = trip_info
+        }
+        for _, row in group.sort_values("stop_sequence").iterrows()
+    ]
 
-# === SAVE TO JSON ===
+# Save to JSON with numpy fix
 with open(OUTPUT_JSON, "w") as f:
-    json.dump(output, f, indent=2)
+    json.dump(output, f, indent=2, default=convert_numpy)
 
-print(f"✅ Saved {len(output)} SMART trips to {OUTPUT_JSON}")
+print(f"✅ Successfully created {OUTPUT_JSON} with {len(output)} SMART trips.")
