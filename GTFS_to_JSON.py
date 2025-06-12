@@ -3,7 +3,7 @@ import zipfile
 import json
 
 # === CONFIG ===
-// GTFS_ZIP = "smart-ca-us.zip"
+# GTFS_ZIP = "smart-ca-us.zip"
 GTFS_ZIP = "/Users/tgreenleaf/Downloads/smart-ca-us.zip"
 
 SMART_ROUTE_IDS = ["SMART"]  # Add or adjust route IDs as needed
