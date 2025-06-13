@@ -78,6 +78,7 @@
         window.ThunkableWebviewerExtension.receiveMessage(message => {
           try {
             const data = JSON.parse(message);
+            console.log("🔍 Received:", data);
             handleMessage(data);
           } catch (e) {
             const errMsg = "❌ Invalid JSON: " + e.message;
