@@ -2,39 +2,33 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>NextTrainChecker – minute JSON</title>
+  <title>NextTrainChecker – HH:MM only</title>
 
-  <!-- Thunkable Web-Viewer bridge -->
   <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js"></script>
-
-  <style>
-    body { font-family: sans-serif; margin: 1rem; font-size: 15px; }
-  </style>
+  <style>body{font-family:sans-serif;margin:1rem;font-size:15px}</style>
 </head>
 <body>
   <div id="status">✅ Bridge loaded – waiting…</div>
 
   <script>
   /* ---------- CONFIG ---------- */
-  const LOCAL = true;                                   // true → JSON bundled as asset; false → hosted on GitHub
+  const LOCAL = true;   // true → JSON bundled with HTML
   const SCHEDULE_URL = LOCAL ? "./smart_schedule.json"
                              : "https://tatiang.github.io/scripts/smart_schedule.json";
 
   /* ---------- helpers ---------- */
   const norm = n => n.replace(/(^SMART\s+|\s+SMART$)/i,"").trim().toLowerCase();
-
-  // "MM/DD/YY"  or "MM/DD/YYYY"  → Date
   const parseDate = d => { const [m,day,yy] = d.split("/").map(Number);
                            return new Date(yy<100?2000+yy:yy, m-1, day); };
 
-  // round to nearest minute and return "HH:MM"
+  // round to nearest minute → return "HH:MM"  (no seconds)
   function minute(t){
     let [h,m,s] = t.split(":").map(Number);
     if (s >= 30){ m += 1; if (m === 60){ h = (h + 1) % 24; m = 0; } }
     return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
   }
 
-  const toHHMM = t => t.slice(0,5);            // trim seconds if present
+  const toHHMM = str => str.length > 5 ? str.slice(0,5) : str;
 
   function post(obj){
     document.getElementById("status").textContent = obj.summary || JSON.stringify(obj);
@@ -43,63 +37,59 @@
     }
   }
 
-  /* ---------- core search ---------- */
+  /* ---------- trip search ---------- */
   function findTrips(q, schedule){
-    const userDate = parseDate(q.date);
+    const dateObj = parseDate(q.date);
     const depN = norm(q.departureStation);
     const arrN = norm(q.arrivalStation);
 
-    const seen = new Set();         // deduplicate on departure minute
+    const seen = new Set();
     const trips = [];
 
     for (const trip of Object.values(schedule)){
       if (!trip.stops) continue;
 
-      const start = parseDate(trip.start_date);
-      const end   = parseDate(trip.end_date);
-      if (userDate < start || userDate > end) continue;
+      const start = parseDate(trip.start_date), end = parseDate(trip.end_date);
+      if (dateObj < start || dateObj > end) continue;
 
-      const stops = trip.stops.map(st => ({...st, _n: norm(st.stop_name)}));
-
-      const iDep = stops.findIndex(st => st._n === depN);
-      const iArr = stops.findIndex(st => st._n === arrN);
+      const stops = trip.stops.map(s => ({...s, _n: norm(s.stop_name)}));
+      const iDep  = stops.findIndex(s => s._n === depN);
+      const iArr  = stops.findIndex(s => s._n === arrN);
       if (iDep < 0 || iArr <= iDep) continue;
 
-      const depMinute = minute(stops[iDep].departure_time);
-      if (depMinute < q.time) continue;         // before user cutoff
+      const depMin = minute(stops[iDep].departure_time);
+      if (depMin < q.time) continue;
 
-      if (seen.has(depMinute)) continue;        // duplicate minute
-      seen.add(depMinute);
+      if (seen.has(depMin)) continue;   // drop duplicate minute
+      seen.add(depMin);
 
       trips.push({
-        departure : depMinute,
-        arrival   : minute(stops[iArr].arrival_time),
-        from      : stops[iDep].stop_name,
-        to        : stops[iArr].stop_name
+        departure: depMin,
+        arrival  : minute(stops[iArr].arrival_time),
+        from     : stops[iDep].stop_name,
+        to       : stops[iArr].stop_name
       });
     }
 
-    trips.sort((a, b) => a.departure.localeCompare(b.departure));
+    trips.sort((a,b) => a.departure.localeCompare(b.departure));
     if (trips[0]) trips[0].next = true;
     return trips;
   }
 
-  /* ---------- handle incoming message ---------- */
+  /* ---------- message handler ---------- */
   async function handle(raw){
-    let q;
-    try { q = typeof raw === "string" ? JSON.parse(raw) : raw; }
-    catch { post({summary:"❌ Bad JSON"}); return; }
+    let q; try{ q = typeof raw === "string" ? JSON.parse(raw) : raw; }
+    catch{ post({summary:"❌ Bad JSON"}); return; }
 
     const need = ["date","time","departureStation","arrivalStation"];
     if (!need.every(k => k in q)){ post({summary:"❌ Missing field"}); return; }
 
-    q.time = toHHMM(q.time);     // normalise cutoff to "HH:MM"
+    q.time = toHHMM(q.time);     // ensure HH:MM
 
     post({summary:"🔄 Fetching schedule…"});
-
     try{
-      const schedule = await fetch(SCHEDULE_URL).then(r => r.json());
-      const trips = findTrips(q, schedule);
+      const data = await fetch(SCHEDULE_URL).then(r => r.json());
+      const trips = findTrips(q, data);
 
       post({
         summary: trips.length
@@ -108,7 +98,7 @@
         trips
       });
     }catch(err){
-      post({summary:"❌ Fetch error: " + err.message});
+      post({summary:"❌ Fetch error: "+err.message});
     }
   }
 
