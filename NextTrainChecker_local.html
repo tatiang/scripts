@@ -2,113 +2,111 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>NextTrainChecker – HH:MM only</title>
+  <title>NextTrainChecker (local JSON)</title>
 
+  <!-- Thunkable bridge -->
   <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js"></script>
   <style>body{font-family:sans-serif;margin:1rem;font-size:15px}</style>
 </head>
 <body>
-  <div id="status">✅ Bridge loaded – waiting…</div>
+  <div id="status">✅ Local bridge loaded – waiting…</div>
 
-  <script>
-  /* ---------- CONFIG ---------- */
-  const LOCAL = true;   // true → JSON bundled with HTML
-  const SCHEDULE_URL = LOCAL ? "./smart_schedule.json"
-                             : "https://tatiang.github.io/scripts/smart_schedule.json";
+<script>
+/* ---------- CONFIG ---------- */
+const LOCAL        = true;                 // <<<<  local build
+const SCHEDULE_URL = "./smart_schedule.json";   // same folder as this HTML
 
-  /* ---------- helpers ---------- */
-  const norm = n => n.replace(/(^SMART\s+|\s+SMART$)/i,"").trim().toLowerCase();
-  const parseDate = d => { const [m,day,yy] = d.split("/").map(Number);
-                           return new Date(yy<100?2000+yy:yy, m-1, day); };
+/* ---------- helpers ---------- */
+const norm = s => s.replace(/(^SMART\s+|\s+SMART$)/i,"").trim().toLowerCase();
+const parseDate = d => {const [m,dy,yy]=d.split("/").map(Number);
+                        return new Date(yy<100?2000+yy:yy, m-1, dy);};
+const weekdayName = d => ["Sunday","Monday","Tuesday","Wednesday",
+                          "Thursday","Friday","Saturday"][d.getDay()];
+const trimSec = t => t.length>5 ? t.slice(0,5) : t;
 
-  // round to nearest minute → return "HH:MM"  (no seconds)
-  function minute(t){
-    let [h,m,s] = t.split(":").map(Number);
-    if (s >= 30){ m += 1; if (m === 60){ h = (h + 1) % 24; m = 0; } }
-    return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+// round to nearest minute → "HH:MM"
+function minute(t){
+  let [h,m,s]=t.split(":").map(Number);
+  if(s>=30){ m++; if(m===60){h=(h+1)%24; m=0;} }
+  return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
+}
+
+function post(obj){
+  document.getElementById("status").textContent=obj.summary||JSON.stringify(obj);
+  if(window.ThunkableWebviewerExtension){
+    window.ThunkableWebviewerExtension.postMessage(JSON.stringify(obj));
+  }
+}
+
+/* ---------- trip search ---------- */
+function findTrips(q,sched){
+  const dateObj = parseDate(q.date);
+  const dow     = weekdayName(dateObj);
+  const depN    = norm(q.departureStation);
+  const arrN    = norm(q.arrivalStation);
+  const seen    = new Set();
+  const trips   = [];
+
+  for(const trip of Object.values(sched)){
+    if(!trip.stops) continue;
+    if(trip.days && !trip.days.includes(dow)) continue;
+    const start=parseDate(trip.start_date), end=parseDate(trip.end_date);
+    if(dateObj<start||dateObj>end) continue;
+
+    const stops=trip.stops.map(s=>({...s,_n:norm(s.stop_name)}));
+    const iDep=stops.findIndex(s=>s._n===depN);
+    const iArr=stops.findIndex(s=>s._n===arrN);
+    if(iDep<0||iArr<=iDep) continue;
+
+    const depMin = minute(stops[iDep].departure_time);
+    if(depMin<q.time) continue;
+    if(seen.has(depMin)) continue;           // drop duplicates
+    seen.add(depMin);
+
+    trips.push({
+      departure: depMin,
+      arrival  : minute(stops[iArr].arrival_time),
+      from     : stops[iDep].stop_name,
+      to       : stops[iArr].stop_name
+    });
   }
 
-  const toHHMM = str => str.length > 5 ? str.slice(0,5) : str;
+  trips.sort((a,b)=>a.departure.localeCompare(b.departure));
+  if(trips[0]) trips[0].next = true;
+  return trips;
+}
 
-  function post(obj){
-    document.getElementById("status").textContent = obj.summary || JSON.stringify(obj);
-    if (window.ThunkableWebviewerExtension){
-      window.ThunkableWebviewerExtension.postMessage(JSON.stringify(obj));
-    }
+/* ---------- message handler ---------- */
+async function handle(raw){
+  let q; try{ q = typeof raw==="string"?JSON.parse(raw):raw; }
+  catch{ post({summary:"❌ Bad JSON"}); return; }
+
+  const need=["date","time","departureStation","arrivalStation"];
+  if(!need.every(k=>k in q)){ post({summary:"❌ Missing field"}); return; }
+
+  q.time = trimSec(q.time);           // HH:MM only
+
+  post({summary:"🔄 Reading local schedule…"});
+  try{
+    const sched = await fetch(SCHEDULE_URL).then(r=>r.json());
+    const trips = findTrips(q,sched);
+
+    post({
+      summary: trips.length ? `✅ ${trips.length} trip(s) found`
+                             : `🚫 No trips after ${q.time} on ${q.date}`,
+      trips
+    });
+  }catch(e){
+    post({summary:"❌ Load error: "+e.message});
   }
+}
 
-  /* ---------- trip search ---------- */
-  function findTrips(q, schedule){
-    const dateObj = parseDate(q.date);
-    const depN = norm(q.departureStation);
-    const arrN = norm(q.arrivalStation);
-
-    const seen = new Set();
-    const trips = [];
-
-    for (const trip of Object.values(schedule)){
-      if (!trip.stops) continue;
-
-      const start = parseDate(trip.start_date), end = parseDate(trip.end_date);
-      if (dateObj < start || dateObj > end) continue;
-
-      const stops = trip.stops.map(s => ({...s, _n: norm(s.stop_name)}));
-      const iDep  = stops.findIndex(s => s._n === depN);
-      const iArr  = stops.findIndex(s => s._n === arrN);
-      if (iDep < 0 || iArr <= iDep) continue;
-
-      const depMin = minute(stops[iDep].departure_time);
-      if (depMin < q.time) continue;
-
-      if (seen.has(depMin)) continue;   // drop duplicate minute
-      seen.add(depMin);
-
-      trips.push({
-        departure: depMin,
-        arrival  : minute(stops[iArr].arrival_time),
-        from     : stops[iDep].stop_name,
-        to       : stops[iArr].stop_name
-      });
-    }
-
-    trips.sort((a,b) => a.departure.localeCompare(b.departure));
-    if (trips[0]) trips[0].next = true;
-    return trips;
-  }
-
-  /* ---------- message handler ---------- */
-  async function handle(raw){
-    let q; try{ q = typeof raw === "string" ? JSON.parse(raw) : raw; }
-    catch{ post({summary:"❌ Bad JSON"}); return; }
-
-    const need = ["date","time","departureStation","arrivalStation"];
-    if (!need.every(k => k in q)){ post({summary:"❌ Missing field"}); return; }
-
-    q.time = toHHMM(q.time);     // ensure HH:MM
-
-    post({summary:"🔄 Fetching schedule…"});
-    try{
-      const data = await fetch(SCHEDULE_URL).then(r => r.json());
-      const trips = findTrips(q, data);
-
-      post({
-        summary: trips.length
-                 ? `✅ ${trips.length} trip(s) found`
-                 : `🚫 No trips after ${q.time} on ${q.date}`,
-        trips
-      });
-    }catch(err){
-      post({summary:"❌ Fetch error: "+err.message});
-    }
-  }
-
-  /* ---------- wiring ---------- */
-  if (window.ThunkableWebviewerExtension){
-    window.ThunkableWebviewerExtension.receiveMessage(handle);
-  }
-  window.addEventListener("message", e => handle(e.data));
-
-  console.log("✅ NextTrainChecker ready (local =", LOCAL, ")");
-  </script>
+/* ---------- wire-up ---------- */
+if(window.ThunkableWebviewerExtension){
+  window.ThunkableWebviewerExtension.receiveMessage(handle);
+}
+window.addEventListener("message", e=>handle(e.data));
+console.log("✅ NextTrainChecker_local ready – using", SCHEDULE_URL);
+</script>
 </body>
 </html>
