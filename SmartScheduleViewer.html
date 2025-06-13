@@ -60,13 +60,24 @@
               const fromIndex = normStops.findIndex(s => s._name === departureStation);
               const toIndex = normStops.findIndex(s => s._name === arrivalStation);
 
-              if (fromIndex >= 0 && toIndex > fromIndex && normStops[fromIndex].departure_time >= time) {
-                results.push(`${normStops[fromIndex].departure_time} from ${normStops[fromIndex].stop_name} to ${normStops[toIndex].stop_name}`);
+              if (fromIndex >= 0 && toIndex > fromIndex) {
+                const depTime = normStops[fromIndex].departure_time;
+                if (depTime >= time) {
+                  results.push({
+                    depTime,
+                    from: normStops[fromIndex].stop_name,
+                    to: normStops[toIndex].stop_name
+                  });
+                }
               }
             }
 
+            results.sort((a, b) => a.depTime.localeCompare(b.depTime));
+
             document.getElementById("results").textContent =
-              results.length ? results.join("\n") : `No departures from ${departureStation} to ${arrivalStation} after ${time} on ${date}`;
+              results.length
+                ? results.map(r => `${r.depTime} from ${r.from} to ${r.to}`).join("\n")
+                : `No departures from ${departureStation} to ${arrivalStation} after ${time} on ${date}`;
           })
           .catch(err => {
             console.error("Fetch error:", err);
