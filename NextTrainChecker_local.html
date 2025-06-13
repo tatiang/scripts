@@ -2,105 +2,123 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>NextTrainChecker – minute resolution</title>
+  <title>NextTrainChecker – minute JSON</title>
+
+  <!-- Thunkable Web-Viewer bridge -->
   <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js"></script>
-  <style>body{font-family:sans-serif;margin:1rem;font-size:15px}</style>
+
+  <style>
+    body { font-family: sans-serif; margin: 1rem; font-size: 15px; }
+  </style>
 </head>
 <body>
   <div id="status">✅ Bridge loaded – waiting…</div>
 
   <script>
-  /* ---- CONFIG ---- */
-  const LOCAL = true;                                // true ⇢ JSON bundled with HTML
+  /* ---------- CONFIG ---------- */
+  const LOCAL = true;                                   // true → JSON bundled as asset; false → hosted on GitHub
   const SCHEDULE_URL = LOCAL ? "./smart_schedule.json"
                              : "https://tatiang.github.io/scripts/smart_schedule.json";
 
-  /* ---- helpers ---- */
+  /* ---------- helpers ---------- */
   const norm = n => n.replace(/(^SMART\s+|\s+SMART$)/i,"").trim().toLowerCase();
+
+  // "MM/DD/YY"  or "MM/DD/YYYY"  → Date
   const parseDate = d => { const [m,day,yy] = d.split("/").map(Number);
                            return new Date(yy<100?2000+yy:yy, m-1, day); };
 
-  // round to nearest minute, return "HH:MM"
+  // round to nearest minute and return "HH:MM"
   function minute(t){
-    let [h,m,s]=t.split(":").map(Number);
-    if(s>=30){ m+=1; if(m===60){h=(h+1)%24; m=0;} }
+    let [h,m,s] = t.split(":").map(Number);
+    if (s >= 30){ m += 1; if (m === 60){ h = (h + 1) % 24; m = 0; } }
     return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}`;
   }
 
+  const toHHMM = t => t.slice(0,5);            // trim seconds if present
+
   function post(obj){
-    document.getElementById("status").textContent = obj.summary||JSON.stringify(obj);
-    if(window.ThunkableWebviewerExtension){
+    document.getElementById("status").textContent = obj.summary || JSON.stringify(obj);
+    if (window.ThunkableWebviewerExtension){
       window.ThunkableWebviewerExtension.postMessage(JSON.stringify(obj));
     }
   }
 
-  /* ---- core search ---- */
+  /* ---------- core search ---------- */
   function findTrips(q, schedule){
     const userDate = parseDate(q.date);
     const depN = norm(q.departureStation);
     const arrN = norm(q.arrivalStation);
 
-    const seen = new Set();
+    const seen = new Set();         // deduplicate on departure minute
     const trips = [];
 
-    for(const trip of Object.values(schedule)){
-      if(!trip.stops) continue;
+    for (const trip of Object.values(schedule)){
+      if (!trip.stops) continue;
 
-      const start=parseDate(trip.start_date), end=parseDate(trip.end_date);
-      if(userDate<start||userDate>end) continue;
+      const start = parseDate(trip.start_date);
+      const end   = parseDate(trip.end_date);
+      if (userDate < start || userDate > end) continue;
 
-      const stops = trip.stops.map(st=>({...st,_n:norm(st.stop_name)}));
-      const iDep = stops.findIndex(st=>st._n===depN);
-      const iArr = stops.findIndex(st=>st._n===arrN);
-      if(iDep<0||iArr<=iDep) continue;
+      const stops = trip.stops.map(st => ({...st, _n: norm(st.stop_name)}));
 
-      const depRaw = stops[iDep].departure_time;
-      if(depRaw < q.time) continue;
+      const iDep = stops.findIndex(st => st._n === depN);
+      const iArr = stops.findIndex(st => st._n === arrN);
+      if (iDep < 0 || iArr <= iDep) continue;
 
-      const dep = minute(depRaw);          // "HH:MM"
-      if(seen.has(dep)) continue;          // duplicate minute
-      seen.add(dep);
+      const depMinute = minute(stops[iDep].departure_time);
+      if (depMinute < q.time) continue;         // before user cutoff
+
+      if (seen.has(depMinute)) continue;        // duplicate minute
+      seen.add(depMinute);
 
       trips.push({
-        departure: dep,
-        arrival  : minute(stops[iArr].arrival_time),
-        from     : stops[iDep].stop_name,
-        to       : stops[iArr].stop_name
+        departure : depMinute,
+        arrival   : minute(stops[iArr].arrival_time),
+        from      : stops[iDep].stop_name,
+        to        : stops[iArr].stop_name
       });
     }
-    trips.sort((a,b)=>a.departure.localeCompare(b.departure));
-    if(trips[0]) trips[0].next=true;
+
+    trips.sort((a, b) => a.departure.localeCompare(b.departure));
+    if (trips[0]) trips[0].next = true;
     return trips;
   }
 
-  /* ---- message handler ---- */
+  /* ---------- handle incoming message ---------- */
   async function handle(raw){
-    let q; try{ q=typeof raw==="string"?JSON.parse(raw):raw; }
-    catch(e){ post({summary:"❌ Bad JSON"}); return; }
+    let q;
+    try { q = typeof raw === "string" ? JSON.parse(raw) : raw; }
+    catch { post({summary:"❌ Bad JSON"}); return; }
 
-    const need=["date","time","departureStation","arrivalStation"];
-    if(!need.every(k=>k in q)){ post({summary:"❌ Missing field"}); return; }
+    const need = ["date","time","departureStation","arrivalStation"];
+    if (!need.every(k => k in q)){ post({summary:"❌ Missing field"}); return; }
+
+    q.time = toHHMM(q.time);     // normalise cutoff to "HH:MM"
 
     post({summary:"🔄 Fetching schedule…"});
+
     try{
-      const schedule = await fetch(SCHEDULE_URL).then(r=>r.json());
-      const trips = findTrips(q,schedule);
+      const schedule = await fetch(SCHEDULE_URL).then(r => r.json());
+      const trips = findTrips(q, schedule);
+
       post({
-        summary: trips.length?`✅ ${trips.length} trip(s) found`
-                             : `🚫 No trips after ${q.time} on ${q.date}`,
+        summary: trips.length
+                 ? `✅ ${trips.length} trip(s) found`
+                 : `🚫 No trips after ${q.time} on ${q.date}`,
         trips
       });
     }catch(err){
-      post({summary:"❌ Fetch error: "+err.message});
+      post({summary:"❌ Fetch error: " + err.message});
     }
   }
 
-  /* ---- wiring ---- */
-  if(window.ThunkableWebviewerExtension){
+  /* ---------- wiring ---------- */
+  if (window.ThunkableWebviewerExtension){
     window.ThunkableWebviewerExtension.receiveMessage(handle);
   }
-  window.addEventListener("message",e=>handle(e.data));
-  console.log("✅ NextTrainChecker ready (local=",LOCAL,")");
+  window.addEventListener("message", e => handle(e.data));
+
+  console.log("✅ NextTrainChecker ready (local =", LOCAL, ")");
   </script>
 </body>
 </html>
