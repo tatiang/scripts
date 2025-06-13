@@ -1,111 +1,101 @@
 <!DOCTYPE html>
 <html>
-<head>
-  <title>SMART Train Trip Finder</title>
-  <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js"></script>
-</head>
-<body>
-  <h1>SMART Train Trip Finder</h1>
-  <form id="tripForm">
-    <label for="date">Date (MM/DD/YY):</label>
-    <input type="text" id="date" name="date" value="06/13/25" required><br><br>
+  <head>
+    <meta charset="UTF-8" />
+    <title>NextTrainChecker</title>
+    <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js"></script>
+  </head>
+  <body>
+    <div id="result">🔄 Waiting for input...</div>
 
-    <label for="time">Earliest Departure Time (HH:MM:SS):</label>
-    <input type="text" id="time" name="time" value="09:00:00" required><br><br>
+    <script>
+      const normalize = name =>
+        name.replace(/(^SMART\\s+|\\s+SMART$)/i, '').trim().toLowerCase();
 
-    <label for="departure">Departure Station:</label>
-    <input type="text" id="departure" name="departure" value="Novato Downtown" required><br><br>
-
-    <label for="arrival">Arrival Station:</label>
-    <input type="text" id="arrival" name="arrival" value="Santa Rosa Downtown" required><br><br>
-
-    <button type="submit">Find Trips</button>
-  </form>
-
-  <pre id="results">Waiting for search...</pre>
-
-  <script>
-    const normalize = name => name.replace(/(^SMART\s+|\s+SMART$)/i, '').trim().toLowerCase();
-
-    // Confirm extension loaded
-    console.log("✅ ThunkableWebviewerExtension:", !!window.ThunkableWebviewerExtension);
-
-    // Startup ping
-    window.addEventListener("DOMContentLoaded", () => {
-      const startup = "✅ NextTrainChecker.html loaded and listening.";
-      document.getElementById("results").textContent = startup;
-
-      if (window.ThunkableWebviewerExtension) {
-        setTimeout(() => {
-          window.ThunkableWebviewerExtension.postMessage(startup);
-        }, 300);
+      function parseDate(mmddyy) {
+        const [mm, dd, yy] = mmddyy.split("/");
+        return new Date(`20${yy}`, mm - 1, dd);
       }
-    });
 
-    document.getElementById("tripForm").addEventListener("submit", function(event) {
-      event.preventDefault();
+      function handleMessage(data) {
+        const { date, time, departureStation, arrivalStation } = data;
+        const normDep = normalize(departureStation);
+        const normArr = normalize(arrivalStation);
+        const userDate = parseDate(date);
 
-      const date = document.getElementById("date").value;
-      const time = document.getElementById("time").value;
-      const departureInput = normalize(document.getElementById("departure").value);
-      const arrivalInput = normalize(document.getElementById("arrival").value);
-      const parts = date.split('/');
-      const userDate = new Date(`20${parts[2]}`, parts[0] - 1, parts[1]);
+        fetch("https://tatiang.github.io/scripts/smart_schedule.json")
+          .then(res => res.json())
+          .then(schedule => {
+            const results = [];
 
-      const resultsEl = document.getElementById("results");
-      resultsEl.textContent = "Fetching schedule...";
+            for (const trip of Object.values(schedule)) {
+              const { start_date, end_date, stops } = trip;
+              if (!stops) continue;
 
-      fetch("https://tatiang.github.io/scripts/smart_schedule.json")
-        .then(res => res.json())
-        .then(data => {
-          const matches = [];
+              const start = parseDate(start_date);
+              const end = parseDate(end_date);
+              if (userDate < start || userDate > end) continue;
 
-          for (const [tripId, trip] of Object.entries(data)) {
-            if (!trip.stops) continue;
+              const mapped = stops.map(s => ({
+                ...s,
+                _name: normalize(s.stop_name)
+              }));
 
-            const startDate = new Date(trip.start_date);
-            const endDate = new Date(trip.end_date);
-            if (userDate < startDate || userDate > endDate) continue;
+              const depIdx = mapped.findIndex(s => s._name === normDep);
+              const arrIdx = mapped.findIndex(s => s._name === normArr);
 
-            const stops = trip.stops.map(stop => ({
-              ...stop,
-              normalized_name: normalize(stop.stop_name)
-            }));
-
-            const depIndex = stops.findIndex(s => s.normalized_name === departureInput);
-            const arrIndex = stops.findIndex(s => s.normalized_name === arrivalInput);
-
-            if (depIndex >= 0 && arrIndex > depIndex) {
-              const depTime = stops[depIndex].departure_time;
-              if (depTime >= time) {
-                matches.push(`${depTime} from ${stops[depIndex].stop_name} to ${stops[arrIndex].stop_name}`);
+              if (depIdx >= 0 && arrIdx > depIdx) {
+                const depTime = mapped[depIdx].departure_time;
+                if (depTime >= time) {
+                  results.push(
+                    `${depTime} from ${mapped[depIdx].stop_name} to ${mapped[arrIdx].stop_name}`
+                  );
+                }
               }
             }
-          }
 
-          const message = matches.length > 0
-            ? "✅ Matching Trips:\n" + matches.join('\n')
-            : `🚫 No matching trips from ${departureInput} to ${arrivalInput} after ${time} on ${date}`;
+            results.sort();
+            const msg = results.length
+              ? "✅ Matching trips:\n" + results.join("\n")
+              : `🚫 No departures from ${departureStation} to ${arrivalStation} after ${time} on ${date}`;
 
-          resultsEl.textContent = message;
-
-          setTimeout(() => {
+            document.getElementById("result").textContent = msg;
             if (window.ThunkableWebviewerExtension) {
-              window.ThunkableWebviewerExtension.postMessage(message);
+              window.ThunkableWebviewerExtension.postMessage(msg);
             }
-          }, 300);
-        })
-        .catch(err => {
-          const errorMsg = "❌ Error: " + err.message;
-          resultsEl.textContent = errorMsg;
+          })
+          .catch(err => {
+            const msg = `❌ Error: ${err.message}`;
+            document.getElementById("result").textContent = msg;
+            if (window.ThunkableWebviewerExtension) {
+              window.ThunkableWebviewerExtension.postMessage(msg);
+            }
+          });
+      }
 
-          if (window.ThunkableWebviewerExtension) {
-            setTimeout(() => {
-              window.ThunkableWebviewerExtension.postMessage(errorMsg);
-            }, 300);
+      // Listen for message from Thunkable
+      if (window.ThunkableWebviewerExtension) {
+        window.ThunkableWebviewerExtension.receiveMessage(message => {
+          try {
+            const data = JSON.parse(message);
+            handleMessage(data);
+          } catch (e) {
+            const errMsg = "❌ Invalid JSON: " + e.message;
+            document.getElementById("result").textContent = errMsg;
+            window.ThunkableWebviewerExtension.postMessage(errMsg);
           }
         });
-    });
-  </script>
-</body>
+      }
+
+      // Ready confirmation
+      document.addEventListener("DOMContentLoaded", () => {
+        const msg = "✅ NextTrainChecker.html loaded and ready.";
+        console.log(msg);
+        document.getElementById("result").textContent = msg;
+        if (window.ThunkableWebviewerExtension) {
+          window.ThunkableWebviewerExtension.postMessage(msg);
+        }
+      });
+    </script>
+  </body>
 </html>
