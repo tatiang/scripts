@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8"/>
+  <title>NextTrainChecker – all trips</title>
+  <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js"></script>
+  <style>body{font-family:sans-serif;margin:1rem;font-size:15px}</style>
+</head>
+<body>
+  <div id="status">✅ Bridge loaded – waiting…</div>
+
+  <script>
+  /* ---------- CONFIG ---------- */
+  const LOCAL = false; // set true if JSON is bundled with the HTML
+  const SCHEDULE_URL = LOCAL ? "./smart_schedule.json"
+                             : "https://tatiang.github.io/scripts/smart_schedule.json";
+
+  /* ---------- helpers ---------- */
+  const norm = n => n.replace(/(^SMART\s+|\s+SMART$)/i,"").trim().toLowerCase();
+  const parseDate = d => {       // MM/DD/YY  or  MM/DD/YYYY
+    const [m,day,yy] = d.split('/').map(Number);
+    return new Date(yy < 100 ? 2000+yy : yy, m-1, day);
+  };
+  function respond(obj){            // post back + show on screen
+    const txt = obj.summary || JSON.stringify(obj);
+    document.getElementById("status").textContent = txt;
+    if(window.ThunkableWebviewerExtension){
+      window.ThunkableWebviewerExtension.postMessage(JSON.stringify(obj));
+    }
+  }
+
+  function findTrips(q,schedule){
+    const userDate = parseDate(q.date);
+    const depN = norm(q.departureStation);
+    const arrN = norm(q.arrivalStation);
+    const trips = [];
+
+    for(const trip of Object.values(schedule)){
+      if(!trip.stops) continue;
+      const start = parseDate(trip.start_date);
+      const end   = parseDate(trip.end_date);
+      if(userDate < start || userDate > end) continue;
+
+      const stops = trip.stops.map(st=>({...st,_n:norm(st.stop_name)}));
+      const iDep  = stops.findIndex(st=>st._n===depN);
+      const iArr  = stops.findIndex(st=>st._n===arrN);
+      if(iDep<0 || iArr<=iDep) continue;
+
+      const depT = stops[iDep].departure_time;
+      if(depT < q.time) continue;
+
+      trips.push({
+        departure: depT,
+        arrival  : stops[iArr].arrival_time,
+        from     : stops[iDep].stop_name,
+        to       : stops[iArr].stop_name
+      });
+    }
+    trips.sort((a,b)=>a.departure.localeCompare(b.departure));
+    if(trips[0]) trips[0].next = true;           // mark earliest
+    return trips;
+  }
+
+  async function handle(raw){
+    let q;
+    try{ q = typeof raw==="string" ? JSON.parse(raw): raw; }
+    catch(e){ respond({summary:"❌ Bad JSON"}); return; }
+
+    if(!["date","time","departureStation","arrivalStation"].every(k=>k in q)){
+      respond({summary:"❌ Missing field"}); return;
+    }
+    respond({summary:"🔄 Fetching schedule…"});
+
+    try{
+      const schedule = await fetch(SCHEDULE_URL).then(r=>r.json());
+      const trips = findTrips(q,schedule);
+      if(trips.length){
+        respond({summary:`✅ ${trips.length} trip(s) found`, trips});
+      }else{
+        respond({summary:`🚫 No trips after ${q.time} on ${q.date}`, trips:[]});
+      }
+    }catch(err){
+      respond({summary:"❌ Fetch error: "+err.message});
+    }
+  }
+
+  /* ---------- wiring ---------- */
+  if(window.ThunkableWebviewerExtension){
+    window.ThunkableWebviewerExtension.receiveMessage(handle);
+  }
+  window.addEventListener("message", e=>handle(e.data));
+  console.log("✅ NextTrainChecker ready (local =", LOCAL, ")");
+  </script>
+</body>
+</html>
