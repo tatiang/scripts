@@ -1,116 +1,196 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <meta charset="UTF-8" />
-    <title>Next SMART Train Checker</title>
-  </head>
-  <body>
-    <div id="result">Loading...</div>
+<head>
+  <title>SMART Train Trip Finder</title>
+  <meta charset="UTF-8">
+  <title>SMART Trip Finder</title>
+  <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js"></script>
+  <style>
+    body { font-family: sans-serif; margin: 1rem; }
+    input, button { padding: 0.5rem; margin: 0.5rem 0; width: 100%; }
+    #results { white-space: pre-wrap; margin-top: 1rem; background: #f8f8f8; padding: 1rem; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>SMART Train Trip Finder</h1>
+  <h1>SMART Trip Finder</h1>
+  <form id="tripForm">
+    <label for="date">Date (MM/DD/YY):</label>
+    <input type="text" id="date" name="date" value="06/13/25" required><br><br>
+    <input type="text" id="date" name="date" required>
 
-    <script>
-      // Normalize station names by adding "SMART " if missing
-      function normalizeStationName(name) {
-        const knownStations = [
-          "Larkspur",
-          "San Rafael",
-          "Marin Civic Center",
-          "Novato Hamilton",
-          "Novato Downtown",
-          "Novato San Marin",
-          "Petaluma Downtown",
-          "Petaluma North",
-          "Cotati",
-          "Rohnert Park",
-          "Santa Rosa Downtown",
-          "Santa Rosa North",
-          "Sonoma County Airport"
-        ];
+    <label for="time">Earliest Departure Time (HH:MM:SS):</label>
+    <input type="text" id="time" name="time" value="09:00:00" required><br><br>
+    <label for="time">Departure Time (HH:MM:SS):</label>
+    <input type="text" id="time" name="time" required>
 
-        for (const station of knownStations) {
-          if (
-            name.toLowerCase().trim() === station.toLowerCase() ||
-            name.toLowerCase().trim() === ("SMART " + station).toLowerCase()
-          ) {
-            return "SMART " + station;
-          }
-        }
+    <label for="departure">Departure Station:</label>
+    <input type="text" id="departure" name="departure" value="Novato Downtown" required><br><br>
+    <label for="departureStation">From Station:</label>
+    <input type="text" id="departureStation" name="departureStation" required>
 
-        // Return as-is if not found
-        return name;
-      }
+    <label for="arrival">Arrival Station:</label>
+    <input type="text" id="arrival" name="arrival" value="Santa Rosa Downtown" required><br><br>
+    <label for="arrivalStation">To Station:</label>
+    <input type="text" id="arrivalStation" name="arrivalStation" required>
 
-      function findNextTrain(departureStation, arrivalStation, inputTime, scheduleData) {
-        let results = [];
+    <button type="submit">Find Trips</button>
+  </form>
 
-        const normDep = normalizeStationName(departureStation);
-        const normArr = normalizeStationName(arrivalStation);
+  <pre id="results"></pre>
+  <pre id="results">Initializing...</pre>
 
-        for (const tripId in scheduleData) {
-          const stops = scheduleData[tripId];
+  <script>
+    const normalize = name => name.replace(/(^SMART\\s+|\\s+SMART$)/i, '').trim().toLowerCase();
 
-          const depIndex = stops.findIndex(s => s.stop_name === normDep);
-          const arrIndex = stops.findIndex(s => s.stop_name === normArr);
+    document.getElementById("tripForm").addEventListener("submit", function(event) {
+      event.preventDefault();
 
-          if (depIndex >= 0 && arrIndex > depIndex) {
-            const depTime = stops[depIndex].departure_time;
-            if (depTime > inputTime) {
-              results.push({
-                tripId,
-                departureStation: normDep,
-                arrivalStation: normArr,
-                departureTime: depTime,
-                arrivalTime: stops[arrIndex].arrival_time
-              });
+      const date = document.getElementById("date").value;
+      const time = document.getElementById("time").value;
+      const departureInput = normalize(document.getElementById("departure").value);
+      const arrivalInput = normalize(document.getElementById("arrival").value);
+      const userDate = new Date(date);
+
+      fetch("https://tatiang.github.io/scripts/smart_schedule.json")
+        .then(res => res.json())
+        .then(data => {
+          const matches = [];
+
+          for (const [tripId, trip] of Object.entries(data)) {
+            if (!trip.stops) continue;
+
+            // Real date filtering
+            const startDate = new Date(trip.start_date);
+            const endDate = new Date(trip.end_date);
+            if (userDate < startDate || userDate > endDate) continue;
+
+            const stops = trip.stops.map(stop => ({
+              ...stop,
+              normalized_name: normalize(stop.stop_name)
+            }));
+
+            const depIndex = stops.findIndex(s => s.normalized_name === departureInput);
+            const arrIndex = stops.findIndex(s => s.normalized_name === arrivalInput);
+
+            if (depIndex >= 0 && arrIndex > depIndex) {
+              const depTime = stops[depIndex].departure_time;
+              if (depTime >= time) {
+                matches.push({
+                  trip_id: tripId,
+                  departure_time: depTime,
+                  arrival_time: stops[arrIndex].arrival_time
+                });
+    document.addEventListener("DOMContentLoaded", () => {
+      const pad = n => n.toString().padStart(2, '0');
+      const now = new Date();
+      const mmddyy = `${pad(now.getMonth() + 1)}/${pad(now.getDate())}/${now.getFullYear().toString().slice(-2)}`;
+      const hhmmss = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+
+      document.getElementById("date").value = mmddyy;
+      document.getElementById("time").value = hhmmss;
+      document.getElementById("departureStation").value = "Novato Downtown";
+      document.getElementById("arrivalStation").value = "Santa Rosa Downtown";
+
+      const normalize = name =>
+        name.replace(/(^SMART\s+|\s+SMART$)/i, '').trim().toLowerCase();
+
+      document.getElementById("tripForm").addEventListener("submit", function (event) {
+        event.preventDefault();
+
+        const date = document.getElementById("date").value.trim();
+        const time = document.getElementById("time").value.trim();
+        const departureStation = normalize(document.getElementById("departureStation").value);
+        const arrivalStation = normalize(document.getElementById("arrivalStation").value);
+
+        document.getElementById("results").textContent = "Searching...";
+
+        setTimeout(() => {
+          fetch("https://tatiang.github.io/scripts/smart_schedule.json")
+            .then(response => {
+              if (!response.ok) throw new Error("Network response was not ok");
+              return response.json();
+            })
+            .then(data => {
+              const results = [];
+
+              for (const [tripId, tripData] of Object.entries(data)) {
+                const startDate = tripData.start_date;
+                const endDate = tripData.end_date;
+                const stops = tripData.stops || tripData;
+
+                if (startDate && endDate) {
+                  const userDate = new Date(date);
+                  const fromDate = new Date(startDate);
+                  const toDate = new Date(endDate);
+                  if (userDate < fromDate || userDate > toDate) continue;
+                }
+
+                const normStops = stops.map(s => ({
+                  ...s,
+                  _name: normalize(s.stop_name)
+                }));
+
+                const fromIndex = normStops.findIndex(s => s._name === departureStation);
+                const toIndex = normStops.findIndex(s => s._name === arrivalStation);
+
+                if (fromIndex >= 0 && toIndex > fromIndex) {
+                  const depTime = normStops[fromIndex].departure_time;
+                  if (depTime >= time) {
+                    results.push(`${depTime} from ${normStops[fromIndex].stop_name} to ${normStops[toIndex].stop_name}`);
+                  }
+                }
+              }
             }
           }
-        }
 
-        results.sort((a, b) => a.departureTime.localeCompare(b.departureTime));
-        return results[0] || null;
-      }
+          const results = document.getElementById("results");
+          if (matches.length > 0) {
+            results.textContent = "Matching Trips:\n" + JSON.stringify(matches, null, 2);
+          } else {
+            results.textContent = "🚫 No matching trips found.";
+              results.sort();
+              const message = results.length
+                ? results.join("\n")
+                : `🚫 No departures from ${departureStation} to ${arrivalStation} after ${time} on ${date}`;
 
-      // Receive input via Thunkable Web Viewer
-      window.addEventListener("message", event => {
-        try {
-          const data = JSON.parse(event.data);
-
-          if (!data.date || !data.time || !data.departureStation || !data.arrivalStation) {
-            throw new Error("Missing one or more required fields.");
-          }
-
-          fetch("https://tatiang.github.io/scripts/smart_schedule.json")
-            .then(res => res.json())
-            .then(scheduleData => {
-              const result = findNextTrain(
-                data.departureStation,
-                data.arrivalStation,
-                data.time,
-                scheduleData
-              );
-
-              if (result) {
-                const message = ✅ Next train departs ${data.departureStation} at ${result.departureTime} and arrives at ${data.arrivalStation} at ${result.arrivalTime}.;
-                document.getElementById("result").textContent = message;
-                window.parent.postMessage(message, "*");
-              } else {
-                const message = 🚫 No departures from ${data.departureStation} to ${data.arrivalStation} after ${data.time};
-                document.getElementById("result").textContent = message;
-                window.parent.postMessage(message, "*");
+              document.getElementById("results").textContent = message;
+              if (window.ThunkableWebviewerExtension) {
+                window.ThunkableWebviewerExtension.postMessage(message);
+              }
+            })
+            .catch(err => {
+              const msg = "❌ Error: " + err.message;
+              console.error(msg);
+              document.getElementById("results").textContent = msg;
+              if (window.ThunkableWebviewerExtension) {
+                window.ThunkableWebviewerExtension.postMessage(msg);
               }
             });
-        } catch (err) {
-          const message = ❌ Error: ${err.message};
-          document.getElementById("result").textContent = message;
-          window.parent.postMessage(message, "*");
-        }
+        }, 500); // Add delay for Thunkable environments
       });
 
-      // Signal that the script is ready
-      window.addEventListener("DOMContentLoaded", () => {
-        const startupMessage = "NextTrainChecker.html script started";
-        document.getElementById("result").textContent = startupMessage;
-        window.parent.postMessage(startupMessage, "*");
-      });
-    </script>
-  </body>
-</html>
+      // Handle incoming messages (e.g. from Thunkable blocks)
+      if (window.ThunkableWebviewerExtension) {
+        window.ThunkableWebviewerExtension.receiveMessage(message => {
+          try {
+            const data = JSON.parse(message);
+            if (data.date) document.getElementById("date").value = data.date;
+            if (data.time) document.getElementById("time").value = data.time;
+            if (data.departureStation) document.getElementById("departureStation").value = data.departureStation;
+            if (data.arrivalStation) document.getElementById("arrivalStation").value = data.arrivalStation;
+
+            document.getElementById("tripForm").dispatchEvent(new Event("submit"));
+          } catch (e) {
+            const errMsg = "❌ Invalid input: " + e.message;
+            console.error(errMsg);
+            document.getElementById("results").textContent = errMsg;
+          }
+        })
+        .catch(err => {
+          document.getElementById("results").textContent = "Error: " + err.message;
+        });
+      }
+    });
+  </script>
+</body>
