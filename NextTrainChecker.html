@@ -27,6 +27,21 @@
   <script>
     const normalize = name => name.replace(/(^SMART\s+|\s+SMART$)/i, '').trim().toLowerCase();
 
+    // Confirm extension loaded
+    console.log("✅ ThunkableWebviewerExtension:", !!window.ThunkableWebviewerExtension);
+
+    // Startup ping
+    window.addEventListener("DOMContentLoaded", () => {
+      const startup = "✅ NextTrainChecker.html loaded and listening.";
+      document.getElementById("results").textContent = startup;
+
+      if (window.ThunkableWebviewerExtension) {
+        setTimeout(() => {
+          window.ThunkableWebviewerExtension.postMessage(startup);
+        }, 300);
+      }
+    });
+
     document.getElementById("tripForm").addEventListener("submit", function(event) {
       event.preventDefault();
 
@@ -34,7 +49,6 @@
       const time = document.getElementById("time").value;
       const departureInput = normalize(document.getElementById("departure").value);
       const arrivalInput = normalize(document.getElementById("arrival").value);
-
       const parts = date.split('/');
       const userDate = new Date(`20${parts[2]}`, parts[0] - 1, parts[1]);
 
@@ -75,15 +89,20 @@
 
           resultsEl.textContent = message;
 
-          if (window.ThunkableWebviewerExtension) {
-            window.ThunkableWebviewerExtension.postMessage(message);
-          }
+          setTimeout(() => {
+            if (window.ThunkableWebviewerExtension) {
+              window.ThunkableWebviewerExtension.postMessage(message);
+            }
+          }, 300);
         })
         .catch(err => {
           const errorMsg = "❌ Error: " + err.message;
           resultsEl.textContent = errorMsg;
+
           if (window.ThunkableWebviewerExtension) {
-            window.ThunkableWebviewerExtension.postMessage(errorMsg);
+            setTimeout(() => {
+              window.ThunkableWebviewerExtension.postMessage(errorMsg);
+            }, 300);
           }
         });
     });
