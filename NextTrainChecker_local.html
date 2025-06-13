@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8"/>
-  <title>NextTrainChecker – all trips</title>
+  <title>NextTrainChecker – no duplicates</title>
   <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js"></script>
   <style>body{font-family:sans-serif;margin:1rem;font-size:15px}</style>
 </head>
@@ -10,18 +10,20 @@
   <div id="status">✅ Bridge loaded – waiting…</div>
 
   <script>
-  /* ---------- CONFIG ---------- */
-  const LOCAL = true; // set true if JSON is bundled with the HTML
+  /*--- CONFIG ---*/
+  const LOCAL = true;                             // true if bundled as asset
   const SCHEDULE_URL = LOCAL ? "./smart_schedule.json"
                              : "https://tatiang.github.io/scripts/smart_schedule.json";
 
-  /* ---------- helpers ---------- */
+  /*--- helpers ---*/
   const norm = n => n.replace(/(^SMART\s+|\s+SMART$)/i,"").trim().toLowerCase();
-  const parseDate = d => {       // MM/DD/YY  or  MM/DD/YYYY
-    const [m,day,yy] = d.split('/').map(Number);
-    return new Date(yy < 100 ? 2000+yy : yy, m-1, day);
-  };
-  function respond(obj){            // post back + show on screen
+  const parseDate = d => { const [m,day,yy] = d.split("/").map(Number);
+                           return new Date(yy<100?2000+yy:yy, m-1, day); };
+
+  // round down to minute → "HH:MM:00"
+  const roundTime = t => t.slice(0,5)+":00";
+
+  function post(obj){
     const txt = obj.summary || JSON.stringify(obj);
     document.getElementById("status").textContent = txt;
     if(window.ThunkableWebviewerExtension){
@@ -29,10 +31,12 @@
     }
   }
 
-  function findTrips(q,schedule){
+  function findTrips(q, schedule){
     const userDate = parseDate(q.date);
     const depN = norm(q.departureStation);
     const arrN = norm(q.arrivalStation);
+
+    const seen = new Set();          // for de-duplication
     const trips = [];
 
     for(const trip of Object.values(schedule)){
@@ -42,53 +46,62 @@
       if(userDate < start || userDate > end) continue;
 
       const stops = trip.stops.map(st=>({...st,_n:norm(st.stop_name)}));
-      const iDep  = stops.findIndex(st=>st._n===depN);
-      const iArr  = stops.findIndex(st=>st._n===arrN);
+      const iDep = stops.findIndex(st=>st._n===depN);
+      const iArr = stops.findIndex(st=>st._n===arrN);
       if(iDep<0 || iArr<=iDep) continue;
 
-      const depT = stops[iDep].departure_time;
-      if(depT < q.time) continue;
+      const rawDep = stops[iDep].departure_time;
+      if(rawDep < q.time) continue;
+
+      const dep = roundTime(rawDep);
+      const arr = roundTime(stops[iArr].arrival_time);
+      const key = dep+"-"+arr;       // de-dup key
+
+      if(seen.has(key)) continue;    // duplicate → skip
+      seen.add(key);
 
       trips.push({
-        departure: depT,
-        arrival  : stops[iArr].arrival_time,
-        from     : stops[iDep].stop_name,
-        to       : stops[iArr].stop_name
+        departure:dep,
+        arrival:arr,
+        from:stops[iDep].stop_name,
+        to:stops[iArr].stop_name
       });
     }
+
     trips.sort((a,b)=>a.departure.localeCompare(b.departure));
-    if(trips[0]) trips[0].next = true;           // mark earliest
+    if(trips[0]) trips[0].next = true;
     return trips;
   }
 
+  /*--- handler ---*/
   async function handle(raw){
-    let q;
-    try{ q = typeof raw==="string" ? JSON.parse(raw): raw; }
-    catch(e){ respond({summary:"❌ Bad JSON"}); return; }
+    let q; try{ q=typeof raw==="string"?JSON.parse(raw):raw; }
+    catch(e){ post({summary:"❌ Bad JSON"}); return; }
 
     if(!["date","time","departureStation","arrivalStation"].every(k=>k in q)){
-      respond({summary:"❌ Missing field"}); return;
+      post({summary:"❌ Missing field"}); return;
     }
-    respond({summary:"🔄 Fetching schedule…"});
+    post({summary:"🔄 Fetching schedule…"});
 
     try{
       const schedule = await fetch(SCHEDULE_URL).then(r=>r.json());
       const trips = findTrips(q,schedule);
-      if(trips.length){
-        respond({summary:`✅ ${trips.length} trip(s) found`, trips});
-      }else{
-        respond({summary:`🚫 No trips after ${q.time} on ${q.date}`, trips:[]});
-      }
+
+      post({
+        summary: trips.length?`✅ ${trips.length} trip(s) found`
+                             : `🚫 No trips after ${q.time} on ${q.date}`,
+        trips
+      });
     }catch(err){
-      respond({summary:"❌ Fetch error: "+err.message});
+      post({summary:"❌ Fetch error: "+err.message});
     }
   }
 
-  /* ---------- wiring ---------- */
+  /*--- wiring ---*/
   if(window.ThunkableWebviewerExtension){
     window.ThunkableWebviewerExtension.receiveMessage(handle);
   }
-  window.addEventListener("message", e=>handle(e.data));
+  window.addEventListener("message",e=>handle(e.data));
   console.log("✅ NextTrainChecker ready (local =", LOCAL, ")");
   </script>
 </body>
