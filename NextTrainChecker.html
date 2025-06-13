@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js"></script>
   <title>SMART Train Trip Finder</title>
+  <script src="https://thunkable.github.io/webviewer-extension/thunkableWebviewerExtension.js"></script>
 </head>
 <body>
   <h1>SMART Train Trip Finder</h1>
@@ -22,10 +22,10 @@
     <button type="submit">Find Trips</button>
   </form>
 
-  <pre id="results"></pre>
+  <pre id="results">Waiting for search...</pre>
 
   <script>
-    const normalize = name => name.replace(/(^SMART\\s+|\\s+SMART$)/i, '').trim().toLowerCase();
+    const normalize = name => name.replace(/(^SMART\s+|\s+SMART$)/i, '').trim().toLowerCase();
 
     document.getElementById("tripForm").addEventListener("submit", function(event) {
       event.preventDefault();
@@ -34,7 +34,12 @@
       const time = document.getElementById("time").value;
       const departureInput = normalize(document.getElementById("departure").value);
       const arrivalInput = normalize(document.getElementById("arrival").value);
-      const userDate = new Date(date);
+
+      const parts = date.split('/');
+      const userDate = new Date(`20${parts[2]}`, parts[0] - 1, parts[1]);
+
+      const resultsEl = document.getElementById("results");
+      resultsEl.textContent = "Fetching schedule...";
 
       fetch("https://tatiang.github.io/scripts/smart_schedule.json")
         .then(res => res.json())
@@ -44,7 +49,6 @@
           for (const [tripId, trip] of Object.entries(data)) {
             if (!trip.stops) continue;
 
-            // Real date filtering
             const startDate = new Date(trip.start_date);
             const endDate = new Date(trip.end_date);
             if (userDate < startDate || userDate > endDate) continue;
@@ -60,24 +64,27 @@
             if (depIndex >= 0 && arrIndex > depIndex) {
               const depTime = stops[depIndex].departure_time;
               if (depTime >= time) {
-                matches.push({
-                  trip_id: tripId,
-                  departure_time: depTime,
-                  arrival_time: stops[arrIndex].arrival_time
-                });
+                matches.push(`${depTime} from ${stops[depIndex].stop_name} to ${stops[arrIndex].stop_name}`);
               }
             }
           }
 
-          const results = document.getElementById("results");
-          if (matches.length > 0) {
-            results.textContent = "Matching Trips:\n" + JSON.stringify(matches, null, 2);
-          } else {
-            results.textContent = "🚫 No matching trips found.";
+          const message = matches.length > 0
+            ? "✅ Matching Trips:\n" + matches.join('\n')
+            : `🚫 No matching trips from ${departureInput} to ${arrivalInput} after ${time} on ${date}`;
+
+          resultsEl.textContent = message;
+
+          if (window.ThunkableWebviewerExtension) {
+            window.ThunkableWebviewerExtension.postMessage(message);
           }
         })
         .catch(err => {
-          document.getElementById("results").textContent = "Error: " + err.message;
+          const errorMsg = "❌ Error: " + err.message;
+          resultsEl.textContent = errorMsg;
+          if (window.ThunkableWebviewerExtension) {
+            window.ThunkableWebviewerExtension.postMessage(errorMsg);
+          }
         });
     });
   </script>
