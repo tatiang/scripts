@@ -6,19 +6,18 @@
 </head>
 <body>
   <h1>SMART Train Trip Finder</h1>
-
   <form id="tripForm">
     <label for="date">Date (MM/DD/YY):</label>
-    <input type="text" id="date" name="date" required><br><br>
+    <input type="text" id="date" name="date" value="06/13/25" required><br><br>
 
     <label for="time">Earliest Departure Time (HH:MM:SS):</label>
-    <input type="text" id="time" name="time" required><br><br>
+    <input type="text" id="time" name="time" value="09:00:00" required><br><br>
 
     <label for="departure">Departure Station:</label>
-    <input type="text" id="departure" name="departure" required><br><br>
+    <input type="text" id="departure" name="departure" value="Novato Downtown" required><br><br>
 
     <label for="arrival">Arrival Station:</label>
-    <input type="text" id="arrival" name="arrival" required><br><br>
+    <input type="text" id="arrival" name="arrival" value="Santa Rosa Downtown" required><br><br>
 
     <button type="submit">Find Trips</button>
   </form>
@@ -26,31 +25,13 @@
   <pre id="results">Waiting for search...</pre>
 
   <script>
-    console.log("✅ ThunkableWebviewerExtension:", !!window.ThunkableWebviewerExtension);
-
     const normalize = name => name.replace(/(^SMART\s+|\s+SMART$)/i, '').trim().toLowerCase();
 
-    window.addEventListener("message", function(event) {
-      console.log("📩 Message received in WebViewer:", event.data);
-
-      try {
-        const data = typeof event.data === "string" ? JSON.parse(event.data) : event.data;
-        console.log("🔍 Parsed JSON:", data);
-
-        // Populate form
-        document.getElementById("date").value = data.date || "";
-        document.getElementById("time").value = data.time || "";
-        document.getElementById("departure").value = data.departureStation || "";
-        document.getElementById("arrival").value = data.arrivalStation || "";
-
-        // Trigger search
-        document.getElementById("tripForm").dispatchEvent(new Event('submit'));
-
-      } catch (err) {
-        console.error("❌ Error parsing message:", err.message);
-        document.getElementById("results").textContent = "Invalid input format.";
-      }
-    });
+    // Convert MM/DD/YY string to Date object
+    function parseDate(mdyy) {
+      const [month, day, year] = mdyy.split('/').map(Number);
+      return new Date(2000 + year, month - 1, day); // Handles "25" => 2025
+    }
 
     document.getElementById("tripForm").addEventListener("submit", function(event) {
       event.preventDefault();
@@ -59,9 +40,7 @@
       const time = document.getElementById("time").value;
       const departureInput = normalize(document.getElementById("departure").value);
       const arrivalInput = normalize(document.getElementById("arrival").value);
-
-      const parts = date.split('/');
-      const userDate = new Date(`20${parts[2]}`, parts[0] - 1, parts[1]);
+      const userDate = parseDate(date);
 
       const resultsEl = document.getElementById("results");
       resultsEl.textContent = "Fetching schedule...";
@@ -74,8 +53,8 @@
           for (const [tripId, trip] of Object.entries(data)) {
             if (!trip.stops) continue;
 
-            const startDate = new Date(trip.start_date);
-            const endDate = new Date(trip.end_date);
+            const startDate = parseDate(trip.start_date);
+            const endDate = parseDate(trip.end_date);
             if (userDate < startDate || userDate > endDate) continue;
 
             const stops = trip.stops.map(stop => ({
@@ -96,12 +75,11 @@
 
           const message = matches.length > 0
             ? "✅ Matching Trips:\n" + matches.join('\n')
-            : `🚫 No matching trips from ${departureInput} to ${arrivalInput} after ${time} on ${date}`;
+            : `🚫 No departures from ${departureInput} to ${arrivalInput} after ${time} on ${date}`;
 
           resultsEl.textContent = message;
 
           if (window.ThunkableWebviewerExtension) {
-            console.log("📤 Posting result back to Thunkable...");
             window.ThunkableWebviewerExtension.postMessage(message);
           }
         })
